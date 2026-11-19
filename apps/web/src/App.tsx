@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
-  API_BASE_URL, authorizeTeacher, closeProtectedRoom, createProtectedRoom,
+  API_BASE_URL, ApiRequestError, authorizeTeacher, closeProtectedRoom, createProtectedRoom,
   fetchRoomState, joinProtectedRoom, leaveProtectedRoom, rotateTeacherSecret
 } from "./api";
 import type { RoomSnapshot } from "./api";
@@ -38,6 +38,7 @@ export default function App() {
   const [role, setRole] = useState<Role>(null);
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [joined, setJoined] = useState(false);
+  const [videoOnlyAvailable, setVideoOnlyAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [frameLoaded, setFrameLoaded] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -50,6 +51,7 @@ export default function App() {
 
   const room = roomInput.trim().toLowerCase();
   const hasValidRoom = isRoomId(room);
+  const isStudentInvite = Boolean(initialRoom && room === initialRoom && !teacherSecret);
   const hasServer = Boolean(API_BASE_URL);
   const invitation = useMemo(
     () => (hasValidRoom ? inviteUrl(room, window.location.href) : ""),
@@ -110,6 +112,7 @@ export default function App() {
     if (busy) return;
     setErrorMessage("");
     setFeedback("");
+    setVideoOnlyAvailable(false);
     stopPreview();
     if (!hasServer) {
       const id = createRoomId();
@@ -168,6 +171,7 @@ export default function App() {
     stopPreview();
     setBusy(true);
     setErrorMessage("");
+    setVideoOnlyAvailable(false);
     try {
       if (hasServer) {
         if (teacherSecret) {
@@ -186,13 +190,34 @@ export default function App() {
         setRole("demo");
       }
       setFrameLoaded(false);
+      setVideoOnlyAvailable(false);
       setJoined(true);
       window.history.replaceState(null, "", teacherSecret && hasServer
         ? teacherUrl(room, teacherSecret, window.location.href)
         : inviteUrl(room, window.location.href));
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
+      const canUseVideo = !teacherSecret && error instanceof ApiRequestError &&
+        (error.status === undefined || error.status === 404 || [502, 503, 504].includes(error.status));
+      setVideoOnlyAvailable(canUseVideo);
+      if (canUseVideo && error instanceof ApiRequestError && error.status === 404) {
+        setErrorMessage("Este convite não foi encontrado no servidor. A sala pode ter sido apagada após uma atualização ou reinício do Render. Peça ao professor para criar uma nova sala para usar os quizzes. Se ele ainda estiver na videochamada, você pode entrar apenas com áudio e vídeo abaixo.");
+      } else {
+        setErrorMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
+      }
     } finally { setBusy(false); }
+  }
+
+  function enterVideoOnly() {
+    if (!videoOnlyAvailable || !hasValidRoom || teacherSecret || !name.trim()) return;
+    stopPreview();
+    setAuthToken("");
+    setSnapshot(null);
+    setRole("demo");
+    setVideoOnlyAvailable(false);
+    setFrameLoaded(false);
+    setJoined(true);
+    setErrorMessage("");
+    window.history.replaceState(null, "", inviteUrl(room, window.location.href));
   }
 
   function leaveRoom() {
@@ -306,6 +331,12 @@ export default function App() {
                 </a>
               </div>
             </div>
+            {hasServer && role === "demo" && (
+              <p className="deployment-note" role="status">
+                Você entrou somente no vídeo. Nesta modalidade temporária, perguntas e controles de sala
+                não ficam sincronizados. Para uma nova aula com quiz, peça um convite atualizado ao professor.
+              </p>
+            )}
             {hasServer && role === "teacher" && (
               <section className="teacher-panel" aria-label="Controles do professor">
                 <h2>Painel do professor</h2>
@@ -346,9 +377,16 @@ export default function App() {
                 <div><h2>Prepare sua sala</h2><p>Crie uma aula ou entre pelo link de convite.</p></div>
               </div>
 
-              <button type="button" className="button button-outline create-button" onClick={() => void makeRoom()} disabled={busy}>
-                {busy ? "Preparando…" : "+ Criar uma nova sala"}
-              </button>
+              {isStudentInvite ? (
+                <p className="student-invite-notice" role="status">
+                  <strong>Você recebeu um convite!</strong> Informe seu nome abaixo e clique em
+                  <strong> Entrar na videoaula</strong>. Não precisa criar outra sala.
+                </p>
+              ) : (
+                <button type="button" className="button button-outline create-button" onClick={() => void makeRoom()} disabled={busy}>
+                  {busy ? "Preparando…" : "+ Criar uma nova sala"}
+                </button>
+              )}
 
               <form onSubmit={event => void enterRoom(event)}>
                 <label htmlFor="room">Código da sala</label>
@@ -358,7 +396,7 @@ export default function App() {
                   value={roomInput} onChange={e => {
                     setRoomInput(e.target.value);
                     setTeacherSecret(""); setAuthToken(""); setRole(null);
-                    setFeedback(""); setErrorMessage("");
+                    setFeedback(""); setErrorMessage(""); setVideoOnlyAvailable(false);
                     // O segredo anterior não deve ser reaproveitado ao trocar de sala.
                     if (window.location.hash) window.history.replaceState(null, "", window.location.pathname);
                   }}
@@ -421,9 +459,19 @@ export default function App() {
                   role="status">{deviceMessage}</p>}
                 {feedback && <p className="feedback" role="status">{feedback}</p>}
                 {errorMessage && <p className="feedback feedback-error" role="alert">{errorMessage}</p>}
+                {videoOnlyAvailable && !teacherSecret && (
+                  <div className="video-only-box">
+                    <strong>Precisa entrar na chamada mesmo assim?</strong>
+                    <p>É possível abrir a sala VDO.Ninja sem passar pelo servidor do Aulas.
+                      Essa opção não habilita quizzes nem controle de acesso.</p>
+                    <button type="button" className="button button-outline" onClick={enterVideoOnly}>
+                      Abrir somente áudio e vídeo
+                    </button>
+                  </div>
+                )}
                 <button className="button button-primary join-button" type="submit"
                   disabled={!hasValidRoom || !name.trim() || busy}>
-                  {busy ? "Conectando…" : teacherSecret && hasServer ? "Entrar como professor →" : "Entrar na videoaula →"}
+                  {busy ? "Conectando à sala… o servidor pode demorar um pouco" : teacherSecret && hasServer ? "Entrar como professor →" : "Entrar na videoaula →"}
                 </button>
               </form>
             </section>
