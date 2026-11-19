@@ -22,7 +22,8 @@ Entregas:
 
 - Iniciar frontend React/TypeScript/Vite.
 - Tela inicial simples para entrar com nome e testar dispositivos.
-- Integrar sala de vídeo com professor e participantes.\n- Configurar publicação automática do site pelo GitHub Pages usando GitHub Actions; verificar resultado do deploy e configurar a origem Pages se necessário.
+- Integrar sala de vídeo com professor e participantes.
+- Configurar publicação automática do site pelo GitHub Pages usando GitHub Actions; verificar resultado do deploy e configurar a origem Pages se necessário.
 - Investigar controles e limites do iframe.
 - Documentar o que funciona no desktop, Safari iOS e Chrome Android.
 - Teste com **duas pessoas** primeiro, depois até **seis**, sem exigir que a integração de quiz esteja pronta.
@@ -39,7 +40,7 @@ Entregas:
 - Entrada/saída, identificação efêmera, encerramento, revogação.
 - Aviso de privacidade e testes básicos de acesso indevido.
 
-**Pronto quando:** URL de aluno não consegue exercer controle de professor, mesmo manipulando requisições.
+**Pronto quando:** URL de aluno não consegue exercer controle de professor, mesmo manipulando requisições. **Código e testes de servidor implementados**; falta hospedar a API em HTTPS e testar com pessoas reais. O GitHub Pages, sem backend configurado, fica no modo audiovisual de teste. Ver [Sprint 3](SPRINT-3.md).
 
 ## Sprint 4 — Construção e exibição de quiz
 
@@ -106,4 +107,7 @@ Ao encerrar um sprint, registrar:
 **Essencial:** áudio/vídeo, sala sem cadastro com controle seguro, quiz e respostas sincronizadas.  
 **Depois:** mais tipos de atividades e biblioteca.  
 **Por último:** integração Atelier, recursos avançados e escala.
-\n## Regra permanente de distribuição\n\nProfessores e alunos não instalam Node.js, aplicativos ou extensões: acessam o Aulas pelo navegador em HTTPS e autorizam câmera/microfone. O Node.js é usado somente na automação de build e, futuramente, no servidor de quizzes; nunca é requisito para participantes.\n
+
+## Regra permanente de distribuição
+
+Professores e alunos não instalam Node.js, aplicativos ou extensões: acessam o Aulas pelo navegador em HTTPS e autorizam câmera/microfone. O Node.js é usado somente na automação de build e, futuramente, no servidor de quizzes; nunca é requisito para participantes.
