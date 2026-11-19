@@ -467,6 +467,11 @@ export default function App() {
                     <button type="button" className="button button-outline" onClick={enterVideoOnly}>
                       Abrir somente áudio e vídeo
                     </button>
+                    {mediaUrl && (
+                      <a className="video-direct-link" href={mediaUrl} target="_blank" rel="noopener noreferrer">
+                        Ou abrir a videochamada diretamente no VDO.Ninja
+                      </a>
+                    )}
                   </div>
                 )}
                 <button className="button button-primary join-button" type="submit"
