@@ -1,0 +1,55 @@
+name: Publicar Aulas no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: aulas-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+      - name: Preparar Node.js somente no GitHub
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar dependências no servidor do GitHub
+        run: npm install --no-audit --no-fund
+      - name: Testar
+        run: npm run test
+      - name: Compilar site
+        run: npm run build
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+      - name: Enviar arquivos públicos
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: apps/web/dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
