@@ -43,13 +43,13 @@ Identificadores: `RF` funcional, `RNF` não funcional. **MVP** é o primeiro pro
 - **RNF-07 Compatibilidade:** validar Chrome/Edge desktop, Safari iOS e Chrome Android; registrar limitações reais.
 - **RNF-08 Observabilidade:** logs técnicos sem códigos secretos, respostas individuais desnecessárias ou mídia.
 - **RNF-09 Evolução:** contratos versionados para os arquivos de aula; não acoplar estrutura ao Atelier.
-- **RNF-10 Desempenho:** meta inicial de teste com seis participantes, sem promessa de escala automática.
+- **RNF-10 Desempenho:** meta inicial de teste com seis participantes, sem promessa de escala automática.\n- **RNF-11 Acesso sem instalação (obrigatório e permanente):** professores e alunos usam a plataforma no navegador moderno por HTTPS, sem instalar Node.js, extensões, programas ou executar comandos; concedem apenas permissões de câmera e microfone necessárias.\n- **RNF-12 Publicação contínua do frontend:** o GitHub Actions compila e publica o site estático no GitHub Pages após atualizações do código, sem intervenção dos usuários finais.
 
 ## Decisões pendentes
 
 1. Link de acesso do professor: segredo recuperável apenas por posse do link; projeto precisa de revogação, expiração e tratamento de compartilhamento indevido.
 2. Como VDO.Ninja será incorporado para conversa em grupo nos principais navegadores — validar no Sprint 2.
-3. Estratégia de persistência e hospedagem — escolher após testes do protótipo.
+3. Frontend: GitHub Pages com GitHub Actions a partir do Sprint 2. Hospedagem do backend e persistência: definir ao construir atividades em tempo real.
 4. Retenção de respostas e aviso de privacidade — definir antes de teste externo.
 5. Identificar participantes com mesmo nome e reconexões sem criar contas.
 
