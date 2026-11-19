@@ -219,3 +219,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .video-only-box p { font-size: 12px; line-height: 1.55; margin: 8px 0 13px; }
 .video-only-box .button { width: 100%; }
 .join-button { line-height: 1.35; }
+
+.video-direct-link { display: block; text-align: center; margin-top: 12px;
+  color: #64418c; font-size: 12px; font-weight: 700;
+  text-decoration: underline; text-underline-offset: 3px; }
