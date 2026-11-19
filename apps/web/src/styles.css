@@ -102,3 +102,26 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .call-actions { width: 100%; justify-content: flex-start; }
   .site-footer { padding: 20px 18px; flex-direction: column; }
 }
+
+/* Sprint 3 — status da sala e comandos do professor */
+.room-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;
+  background: #f4eef9; color: #594775; border: 1px solid #e8daf4; border-radius: 12px;
+  padding: 12px 16px; margin: 0 0 15px; font-size: 12px; }
+.room-status span:last-child { overflow-wrap: anywhere; }
+.teacher-panel { margin-top: 22px; background: #fff; border: 1px solid #e7ddf0;
+  border-radius: 16px; padding: 22px; box-shadow: 0 6px 20px #38204c0e; }
+.teacher-panel h2 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.5px; }
+.teacher-panel > p { color: #73647d; font-size: 13px; line-height: 1.5; }
+.teacher-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
+.button-danger { border: 1px solid #efd3d3; background: #fff0ee; color: #ac3f39; }
+.button-danger:hover:not(:disabled) { background: #ffe5e2; }
+.private-invite { margin-top: 10px; border-color: #e8c7bd; background: #fff9f6; }
+.private-invite .invite-title { color: #9b5334; }
+.deployment-note { margin-top: 27px; padding: 15px 17px; background: #fff6e9;
+  border: 1px solid #efd9bd; color: #68503e !important; border-radius: 12px;
+  font-size: 13px !important; line-height: 1.55 !important; }
+@media (max-width: 560px) {
+  .teacher-panel { padding: 16px; }
+  .teacher-actions { flex-direction: column; }
+  .teacher-actions .button { width: 100%; }
+}
