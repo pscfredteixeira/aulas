@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { createRoomId, inviteUrl, isRoomId, readRoomId, vdoUrl } from "./room";
+import {
+  API_BASE_URL, authorizeTeacher, closeProtectedRoom, createProtectedRoom,
+  fetchRoomState, joinProtectedRoom, leaveProtectedRoom, rotateTeacherSecret
+} from "./api";
+import type { RoomSnapshot } from "./api";
+import { createRoomId, inviteUrl, isRoomId, readRoomId, readTeacherSecret, teacherUrl, vdoUrl } from "./room";
 
 type DeviceStatus = "idle" | "testing" | "ready" | "error";
+type Role = "teacher" | "student" | "demo" | null;
 
 function describeMediaError(error: unknown): string {
-  if (typeof window !== "undefined" && !window.isSecureContext) {
-    return "O teste de câmera exige HTTPS ou localhost. Publique a página com HTTPS para testar em outro aparelho.";
+  if (!window.isSecureContext) {
+    return "A câmera exige HTTPS ou localhost. Abra o Aulas pelo endereço seguro.";
   }
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
       return "Acesso negado. Libere câmera e microfone nas permissões do navegador e tente novamente.";
     }
     if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-      return "Não encontramos câmera ou microfone. Conecte os dispositivos ou entre na chamada para ajustar as opções.";
+      return "Não encontramos câmera ou microfone. Conecte os dispositivos ou ajuste as opções dentro do VDO.Ninja.";
     }
     if (error.name === "NotReadableError") {
       return "Um dispositivo está ocupado por outro programa. Feche esse programa e tente novamente.";
@@ -26,9 +32,15 @@ export default function App() {
   const initialRoom = readRoomId(window.location.search);
   const [roomInput, setRoomInput] = useState(initialRoom ?? "");
   const [name, setName] = useState("");
+  const [teacherSecret, setTeacherSecret] = useState(readTeacherSecret(window.location.hash) ?? "");
+  const [authToken, setAuthToken] = useState("");
+  const [role, setRole] = useState<Role>(null);
+  const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [joined, setJoined] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [frameLoaded, setFrameLoaded] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>("idle");
   const [deviceMessage, setDeviceMessage] = useState("");
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
@@ -37,9 +49,14 @@ export default function App() {
 
   const room = roomInput.trim().toLowerCase();
   const hasValidRoom = isRoomId(room);
+  const hasServer = Boolean(API_BASE_URL);
   const invitation = useMemo(
     () => (hasValidRoom ? inviteUrl(room, window.location.href) : ""),
     [hasValidRoom, room]
+  );
+  const privateLink = useMemo(
+    () => (hasServer && teacherSecret && hasValidRoom ? teacherUrl(room, teacherSecret, window.location.href) : ""),
+    [hasServer, teacherSecret, hasValidRoom, room]
   );
   const mediaUrl = useMemo(
     () => (hasValidRoom && name.trim() ? vdoUrl(room, name) : ""),
@@ -50,36 +67,77 @@ export default function App() {
     if (previewRef.current) previewRef.current.srcObject = previewStream;
   }, [previewStream]);
 
-  useEffect(() => {
-    return () => {
-      localStream.current?.getTracks().forEach((track) => track.stop());
-    };
+  useEffect(() => () => {
+    localStream.current?.getTracks().forEach(track => track.stop());
   }, []);
 
+  // O servidor é autoritativo: o fechamento da sala no Aulas desmonta o iframe neste navegador.
+  useEffect(() => {
+    if (!joined || !hasServer || !authToken || !hasValidRoom) return;
+    let active = true;
+    async function sync() {
+      try {
+        const result = await fetchRoomState(room, authToken);
+        if (!active) return;
+        setSnapshot(result.room);
+        if (result.room.status === "closed") {
+          setJoined(false);
+          setErrorMessage("O professor encerrou esta aula no Aulas. Feche qualquer aba externa do VDO.Ninja.");
+        }
+      } catch (error) {
+        if (!active) return;
+        setJoined(false);
+        setErrorMessage(error instanceof Error ? error.message : "Não foi possível atualizar a sala.");
+      }
+    }
+    void sync();
+    const timer = window.setInterval(() => { void sync(); }, 9000);
+    return () => { active = false; clearInterval(timer); };
+  }, [joined, hasServer, authToken, hasValidRoom, room]);
+
   function stopPreview() {
-    localStream.current?.getTracks().forEach((track) => track.stop());
+    localStream.current?.getTracks().forEach(track => track.stop());
     localStream.current = null;
     if (previewRef.current) previewRef.current.srcObject = null;
     setPreviewStream(null);
   }
 
-  function makeRoom() {
-    const id = createRoomId();
+  async function makeRoom() {
+    if (busy) return;
+    setErrorMessage("");
+    setFeedback("");
     stopPreview();
-    setDeviceStatus("idle");
-    setDeviceMessage("");
-    setRoomInput(id);
-    setCopyFeedback("");
-    window.history.replaceState(null, "", inviteUrl(id, window.location.href));
+    if (!hasServer) {
+      const id = createRoomId();
+      setRoomInput(id);
+      setTeacherSecret("");
+      setRole(null);
+      setAuthToken("");
+      setSnapshot(null);
+      window.history.replaceState(null, "", inviteUrl(id, window.location.href));
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await createProtectedRoom(name.trim() || "Professor(a)");
+      setRoomInput(result.roomId);
+      setTeacherSecret(result.teacherSecret);
+      setAuthToken(result.teacherSecret);
+      setRole("teacher");
+      setSnapshot(result.room);
+      window.history.replaceState(null, "", teacherUrl(result.roomId, result.teacherSecret, window.location.href));
+      setFeedback("Sala criada. Guarde seu link de professor e compartilhe apenas o convite de aluno.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Não foi possível criar a sala.");
+    } finally { setBusy(false); }
   }
 
-  async function copyInvitation() {
-    if (!invitation) return;
+  async function copyText(value: string, success: string) {
     try {
-      await navigator.clipboard.writeText(invitation);
-      setCopyFeedback("Link copiado. Compartilhe com os alunos.");
+      await navigator.clipboard.writeText(value);
+      setFeedback(success);
     } catch {
-      setCopyFeedback("Selecione o link acima e copie manualmente.");
+      setFeedback("Seu navegador bloqueou a cópia automática. Selecione o campo e copie manualmente.");
     }
   }
 
@@ -88,9 +146,7 @@ export default function App() {
     setDeviceStatus("testing");
     setDeviceMessage("");
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("getUserMedia indisponível");
-      }
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("getUserMedia indisponível");
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       localStream.current = stream;
       setPreviewStream(stream);
@@ -102,25 +158,79 @@ export default function App() {
     }
   }
 
-  function enterRoom(event: FormEvent<HTMLFormElement>) {
+  async function enterRoom(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!hasValidRoom || !name.trim()) return;
+    if (!hasValidRoom || !name.trim() || busy) return;
     stopPreview();
-    setFrameLoaded(false);
-    setJoined(true);
-    window.history.replaceState(null, "", inviteUrl(room, window.location.href));
+    setBusy(true);
+    setErrorMessage("");
+    try {
+      if (hasServer) {
+        if (teacherSecret) {
+          const data = await authorizeTeacher(room, teacherSecret);
+          if (data.room.status !== "open") throw Error("A sala foi encerrada.");
+          setAuthToken(teacherSecret);
+          setRole("teacher");
+          setSnapshot(data.room);
+        } else {
+          const data = await joinProtectedRoom(room, name.trim());
+          setAuthToken(data.participantToken);
+          setRole("student");
+          setSnapshot(data.room);
+        }
+      } else {
+        setRole("demo");
+      }
+      setFrameLoaded(false);
+      setJoined(true);
+      window.history.replaceState(null, "", teacherSecret && hasServer
+        ? teacherUrl(room, teacherSecret, window.location.href)
+        : inviteUrl(room, window.location.href));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Não foi possível entrar.");
+    } finally { setBusy(false); }
   }
 
   function leaveRoom() {
+    if (hasServer && role === "student" && authToken) {
+      void leaveProtectedRoom(room, authToken).catch(() => { /* O prazo de presença expira sozinho. */ });
+      setAuthToken("");
+      setRole(null);
+    }
     setJoined(false);
     setFrameLoaded(false);
-    // Desmontar o iframe interrompe a instância local da chamada.
   }
 
-  const invalidInvite =
-    new URLSearchParams(window.location.search).has("room") &&
-    initialRoom === null &&
-    !hasValidRoom;
+  async function rotateLink() {
+    if (!hasServer || role !== "teacher" || !authToken || busy) return;
+    setBusy(true); setErrorMessage("");
+    try {
+      const { teacherSecret: nextSecret } = await rotateTeacherSecret(room, authToken);
+      setTeacherSecret(nextSecret);
+      setAuthToken(nextSecret);
+      window.history.replaceState(null, "", teacherUrl(room, nextSecret, window.location.href));
+      setFeedback("Link do professor renovado. O anterior não funciona mais.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Falha ao renovar o link.");
+    } finally { setBusy(false); }
+  }
+
+  async function endRoom() {
+    if (!hasServer || role !== "teacher" || !authToken || busy) return;
+    if (!window.confirm("Encerrar esta sala para todos os participantes no Aulas? O VDO.Ninja aberto fora do site não será desconectado automaticamente.")) return;
+    setBusy(true); setErrorMessage("");
+    try {
+      const { room: next } = await closeProtectedRoom(room, authToken);
+      setSnapshot(next);
+      setJoined(false);
+      setFeedback("Sala encerrada no Aulas. O acesso à sala externa do VDO.Ninja não pode ser bloqueado aqui.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Falha ao encerrar a sala.");
+    } finally { setBusy(false); }
+  }
+
+  const invalidInvite = new URLSearchParams(window.location.search).has("room") &&
+    initialRoom === null && !hasValidRoom;
 
   return (
     <div className="app-shell">
@@ -129,7 +239,9 @@ export default function App() {
           <span className="logo-mark">a</span>
           <span>Aulas<span className="logo-dot">.</span></span>
         </a>
-        <span className="prototype-label"><span className="status-dot" /> Protótipo audiovisual · Sprint 2</span>
+        <span className="prototype-label">
+          <span className="status-dot" /> {hasServer ? "Sala de aula · Sprint 3" : "Sala de teste · Sprint 3"}
+        </span>
       </header>
 
       <main className={joined ? "main-content main-content--call" : "main-content"}>
@@ -137,14 +249,19 @@ export default function App() {
           <section className="call-screen" aria-label="Sala de videoaula">
             <div className="call-heading">
               <div>
-                <div className="eyebrow">Sua videoaula está aberta</div>
+                <div className="eyebrow">{role === "teacher" ? "Você é o professor" : "Sua videoaula está aberta"}</div>
                 <h1>Sala <span>{room.slice(0, 12)}…</span></h1>
-                <p>A câmera e o microfone são controlados dentro do VDO.Ninja.</p>
+                <p>Converse normalmente com todos os participantes pelo VDO.Ninja.</p>
               </div>
-              <button className="button button-outline" type="button" onClick={leaveRoom}>
-                Sair da chamada
-              </button>
+              <button className="button button-outline" type="button" onClick={leaveRoom}>Sair da chamada</button>
             </div>
+
+            {hasServer && snapshot && (
+              <div className="room-status" aria-live="polite">
+                <span><strong>{snapshot.participants.length}</strong> aluno(s) com presença recente no Aulas</span>
+                <span>{snapshot.participants.map(p => p.name).join(", ") || "Nenhum aluno registrado ainda."}</span>
+              </div>
+            )}
 
             <div className="call-frame-wrap">
               {!frameLoaded && <div className="loading-overlay" role="status">Carregando interface de vídeo…</div>}
@@ -160,107 +277,120 @@ export default function App() {
 
             <div className="call-footer">
               <div className="call-note">
-                <strong>Importante:</strong> carregar a janela não confirma que a chamada está conectada.
-                Confirme a entrada no VDO.Ninja dentro do quadro.
+                <strong>Nota:</strong> os controles da chamada são do VDO.Ninja. Sair ou encerrar
+                a sala no Aulas não interrompe uma chamada aberta em outra aba.
               </div>
               <div className="call-actions">
-                <button className="button button-primary" type="button" onClick={copyInvitation}>
-                  Copiar convite
+                <button className="button button-primary" type="button" onClick={() => void copyText(invitation, "Convite de aluno copiado.")}>
+                  Copiar convite de aluno
                 </button>
                 <a className="text-link" href={mediaUrl} target="_blank" rel="noopener noreferrer">
                   Abrir vídeo em outra aba
                 </a>
               </div>
             </div>
-            {copyFeedback && <p className="feedback" role="status">{copyFeedback}</p>}
+            {hasServer && role === "teacher" && (
+              <section className="teacher-panel" aria-label="Controles do professor">
+                <h2>Painel do professor</h2>
+                <p>Guarde seu link privado. Ele permite administrar a sala sem criar uma conta.</p>
+                <div className="teacher-actions">
+                  <button className="button button-subtle" type="button" onClick={() => void copyText(privateLink, "Link privado do professor copiado.")}>
+                    Copiar meu link de professor
+                  </button>
+                  <button className="button button-outline" type="button" disabled={busy} onClick={() => void rotateLink()}>Renovar link</button>
+                  <button className="button button-danger" type="button" disabled={busy} onClick={() => void endRoom()}>Encerrar sala</button>
+                </div>
+                <p className="field-hint">Não compartilhe seu link de professor. Apenas o convite de aluno deve ser enviado à turma.</p>
+              </section>
+            )}
+            {feedback && <p className="feedback" role="status">{feedback}</p>}
+            {errorMessage && <p className="feedback feedback-error" role="alert">{errorMessage}</p>}
           </section>
         ) : (
           <>
             <section className="hero">
               <div className="eyebrow">Aulas mais próximas, mesmo à distância</div>
               <h1>Sua sala de aula.<br /><em>Ao vivo, de verdade.</em></h1>
-              <p>
-                Reúna professor e alunos com câmera e microfone, diretamente no navegador.
-                Estamos construindo a base para quizzes e atividades em tempo real.
-              </p>
-              <div className="hero-features" aria-label="Características do protótipo">
-                <span>Sem cadastro</span>
-                <span>Vídeo em grupo</span>
-                <span>Convite por link</span>
+              <p>Professor e alunos juntos com câmera e microfone, sem instalar nada.
+                Estamos preparando o ambiente para os quizzes interativos.</p>
+              <div className="hero-features" aria-label="Características">
+                <span>Sem cadastro</span><span>Vídeo em grupo</span><span>Convite por link</span>
               </div>
+              {!hasServer && (
+                <p className="deployment-note"><strong>Modo audiovisual de teste.</strong> A sala de vídeo continua disponível,
+                  mas a proteção do link do professor só será ativada quando o serviço de salas estiver hospedado.
+                </p>
+              )}
             </section>
 
             <section className="setup-panel" aria-label="Preparar videoaula">
               <div className="panel-heading">
                 <span className="step-number">01</span>
-                <div>
-                  <h2>Prepare sua sala</h2>
-                  <p>Crie uma sala ou abra o link que o professor enviou.</p>
-                </div>
+                <div><h2>Prepare sua sala</h2><p>Crie uma aula ou entre pelo link de convite.</p></div>
               </div>
 
-              <button type="button" className="button button-outline create-button" onClick={makeRoom}>
-                + Criar uma nova sala
+              <button type="button" className="button button-outline create-button" onClick={() => void makeRoom()} disabled={busy}>
+                {busy ? "Preparando…" : "+ Criar uma nova sala"}
               </button>
 
-              <form onSubmit={enterRoom}>
+              <form onSubmit={event => void enterRoom(event)}>
                 <label htmlFor="room">Código da sala</label>
                 <input
-                  id="room"
-                  type="text"
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  placeholder="Clique em criar sala ou use um convite"
-                  value={roomInput}
-                  onChange={(event) => { setRoomInput(event.target.value); setCopyFeedback(""); }}
+                  id="room" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false}
+                  placeholder="Crie uma sala ou use o convite recebido"
+                  value={roomInput} onChange={e => {
+                    setRoomInput(e.target.value);
+                    setTeacherSecret(""); setAuthToken(""); setRole(null);
+                    setFeedback(""); setErrorMessage("");
+                    // O segredo anterior não deve ser reaproveitado ao trocar de sala.
+                    if (window.location.hash) window.history.replaceState(null, "", window.location.pathname);
+                  }}
                   aria-describedby="room-hint"
                 />
                 <p className="field-hint" id="room-hint">
                   {invalidInvite ? "Este convite não tem um código de sala válido." :
-                    hasValidRoom ? "Sala pronta. Quem tiver o link pode participar: ainda não há acesso restrito." :
-                      "Os códigos criados pelo Aulas começam com aulas-."}
+                    hasValidRoom ? (hasServer ? "Sala identificada. O servidor validará o ingresso." : "Esta é uma sala audiovisual de teste, ainda sem controles exclusivos.") :
+                      "Os códigos do Aulas começam com aulas-."}
                 </p>
                 {hasValidRoom && (
                   <div className="invite-box">
-                    <div className="invite-title">Convite para a turma</div>
-                    <input type="text" aria-label="Link de convite" readOnly value={invitation} onFocus={(event) => event.target.select()} />
-                    <button className="button button-subtle" type="button" onClick={copyInvitation}>Copiar link</button>
-                    {copyFeedback && <p className="feedback" role="status">{copyFeedback}</p>}
+                    <div className="invite-title">Convite para os alunos</div>
+                    <input type="text" aria-label="Link de convite de aluno" readOnly value={invitation}
+                      onFocus={e => e.target.select()} />
+                    <button className="button button-subtle" type="button"
+                      onClick={() => void copyText(invitation, "Convite de aluno copiado.")}>Copiar convite</button>
+                  </div>
+                )}
+                {privateLink && (
+                  <div className="invite-box private-invite">
+                    <div className="invite-title">Acesso exclusivo do professor</div>
+                    <input type="text" aria-label="Link privado de professor" readOnly value={privateLink}
+                      onFocus={e => e.target.select()} />
+                    <button className="button button-subtle" type="button"
+                      onClick={() => void copyText(privateLink, "Link privado do professor copiado.")}>Copiar meu link privado</button>
+                    <p className="field-hint">Não envie este link aos alunos. O professor deve guardá-lo para reabrir a sala.</p>
                   </div>
                 )}
 
                 <div className="divider" />
-
                 <div className="panel-heading panel-heading-small">
                   <span className="step-number">02</span>
-                  <div>
-                    <h2>Entre na chamada</h2>
-                    <p>Seu nome aparecerá para os outros participantes.</p>
-                  </div>
+                  <div><h2>Entre na chamada</h2><p>Seu nome ficará visível para os participantes.</p></div>
                 </div>
                 <label htmlFor="display-name">Seu nome</label>
                 <input
-                  id="display-name"
-                  type="text"
-                  autoComplete="name"
-                  maxLength={40}
-                  placeholder="Como você quer aparecer na aula?"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  id="display-name" type="text" autoComplete="name" maxLength={40}
+                  placeholder="Como deseja aparecer na aula?"
+                  value={name} onChange={e => setName(e.target.value)}
                 />
 
                 <div className="device-test">
                   <div className="device-text">
                     <strong>Teste de câmera e microfone</strong>
-                    <span>Opcional. O acesso será encerrado antes de entrar na chamada.</span>
+                    <span>Opcional. A prévia local será encerrada ao entrar.</span>
                   </div>
-                  <button
-                    className="button button-subtle"
-                    type="button"
-                    disabled={deviceStatus === "testing"}
-                    onClick={testDevices}
-                  >
+                  <button className="button button-subtle" type="button" disabled={deviceStatus === "testing"}
+                    onClick={() => void testDevices()}>
                     {deviceStatus === "testing" ? "Testando…" : "Testar dispositivos"}
                   </button>
                 </div>
@@ -270,19 +400,19 @@ export default function App() {
                     <span>Prévia local · sem transmissão</span>
                   </div>
                 )}
-                {deviceMessage && (
-                  <p className={deviceStatus === "error" ? "feedback feedback-error" : "feedback"} role="status">
-                    {deviceMessage}
-                  </p>
-                )}
-                <button className="button button-primary join-button" type="submit" disabled={!hasValidRoom || !name.trim()}>
-                  Entrar na videoaula <span aria-hidden="true">→</span>
+                {deviceMessage && <p className={deviceStatus === "error" ? "feedback feedback-error" : "feedback"}
+                  role="status">{deviceMessage}</p>}
+                {feedback && <p className="feedback" role="status">{feedback}</p>}
+                {errorMessage && <p className="feedback feedback-error" role="alert">{errorMessage}</p>}
+                <button className="button button-primary join-button" type="submit"
+                  disabled={!hasValidRoom || !name.trim() || busy}>
+                  {busy ? "Conectando…" : teacherSecret && hasServer ? "Entrar como professor →" : "Entrar na videoaula →"}
                 </button>
               </form>
             </section>
             <p className="privacy-note">
-              Versão de teste: sem contas, moderação, quizzes ou gravação automática pelo Aulas.
-              O vídeo utiliza o serviço externo VDO.Ninja. Não use esta versão para aulas com dados sensíveis.
+              Versão em desenvolvimento, sem gravação pelo Aulas. O vídeo utiliza VDO.Ninja, serviço externo.
+              Os links não protegem o acesso direto ao vídeo. Não use para conteúdos sigilosos.
             </p>
           </>
         )}
