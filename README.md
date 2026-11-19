@@ -89,12 +89,20 @@ Já é possível preparar uma pergunta com **quatro alternativas e gabarito**, s
 
 As perguntas são temporárias: ficam apenas na memória do Render e podem desaparecer se o serviço reiniciar ou hibernar.
 
+## Persistência com Firebase — preparada, ainda não ativada
+
+O projeto agora suporta **Firebase Cloud Firestore** como banco para salas, participantes e perguntas. Isso permitirá recuperar os convites após reinícios do Render. O código passou nos testes de recuperação com um armazenamento simulado.
+
+**Falta conectar um projeto Firebase à API:** por segurança, a credencial deve ser configurada somente no ambiente privado do Render pelo administrador. Até lá, as salas continuam em memória e podem desaparecer. [Como configurar sem instalar programas](docs/FIREBASE.md).
+
+O PostgreSQL gratuito criado no Render durante a avaliação **não foi conectado ao Aulas** e não será usado nesta arquitetura.
+
 ## Pilha técnica e arquitetura
 
 - **Frontend:** React + TypeScript + Vite (implementado no Sprint 2)
 - **Vídeo/áudio:** VDO.Ninja incorporado no navegador (testar comportamento real da sala e restrições dos iframes)
 - **Atividades:** Node.js com HTTP e atualização periódica (~3 s) no Sprint 4; sincronização de votos por WebSocket/Socket.IO prevista para o Sprint 5
-- **Persistência:** atualmente apenas em memória no Render Free (salas e perguntas são perdidas em reinícios); banco persistente em etapa posterior
+- **Persistência:** Firebase Firestore preparado, mas depende de configurar credencial privada; por enquanto salas e perguntas continuam em memória
 - **Versionamento:** GitHub, com separação entre frontend, backend e conteúdo
 
 A tecnologia audiovisual e a sincronização dos quizzes são **subsistemas distintos**. Não presumir que a API do VDO.Ninja sincronize automaticamente os quizzes.
