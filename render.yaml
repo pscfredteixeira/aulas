@@ -1,0 +1,19 @@
+# Implantação de demonstração do backend do Aulas.
+# O frontend permanece em GitHub Pages; só a API roda no Render.
+# Conta do Render e criação do serviço exigem ação do responsável pelo projeto.
+# Atenção: plano free pode hibernar e PERDER TODAS AS SALAS em memória.
+services:
+  - type: web
+    name: aulas-api
+    runtime: node
+    plan: free
+    rootDir: apps/server
+    buildCommand: npm install --ignore-scripts --no-audit --no-fund
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: AULAS_ALLOWED_ORIGINS
+        value: https://pscfredteixeira.github.io
