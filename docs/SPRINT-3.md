@@ -29,7 +29,13 @@ Por padrão, `VITE_AULAS_API_URL` não foi configurado no Pages. Nesse caso:
 
 Isso evita que a implantação do Sprint 3 interrompa a sala de vídeo existente. Também evita oferecer um **falso link secreto sem servidor**.
 
-## Como ativar o Sprint 3 em produção
+## Hospedagem preparada para testes
+
+Foi criado [render.yaml](../render.yaml), que permite ao responsável colocar a API no Render através do botão [Implantar no Render](https://render.com/deploy?repo=https://github.com/pscfredteixeira/aulas). Veja o [passo a passo sem terminal](IMPLANTAR-API.md).
+
+O **plano Free hiberna** quando o serviço fica inativo. Como as salas ainda estão em memória, a hibernação/reinicialização apaga salas: o sistema ainda não está pronto para uso real.
+
+## Como ativar o Sprint 3 em ambiente remoto de teste
 
 1. Hospedar `apps/server` em uma infraestrutura que rode Node.js persistentemente, com HTTPS de verdade. Configurar `AULAS_ALLOWED_ORIGINS=https://pscfredteixeira.github.io` e `PORT` conforme o provedor.
 2. Confirmar que `https://SEU-BACKEND/api/health` retorna `{"ok":true,...}`. A rota não autentica e não revela salas.
