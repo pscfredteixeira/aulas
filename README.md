@@ -2,8 +2,9 @@
 
 Plataforma web de **aulas ao vivo e interativas**: professor e alunos participam com câmera e microfone, enquanto o professor apresenta quizzes e outras atividades sem interromper a videochamada.
 
-> **Estado:** planejamento técnico (Sprint 1). Ainda não existe aplicativo funcional.  
+> **Estado:** Sprint 2 — frontend de demonstração implementado, com integração inicial ao VDO.Ninja. **A chamada entre dois dispositivos ainda precisa ser testada.**  
 > **Princípio da primeira versão:** participar e criar aulas sem exigir cadastro/login.
+> **Importante:** a prova de conceito do Sprint 2 não separa permissões de professor e aluno; isso será implementado com validação no servidor no Sprint 3.
 
 ## Visão do produto
 
@@ -33,11 +34,27 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 - [Arquitetura e decisões técnicas](docs/ARQUITETURA.md)
 - [Roadmap e sprints](docs/ROADMAP.md)
 - [Critérios de aceite do Sprint 1 e próximos testes](docs/TESTES.md)
+- [Sprint 2 — implementação, testes pendentes e execução local](docs/SPRINT-2.md)
 - [Modelo inicial de uma aula em JSON](examples/aula.exemplo.json)
 
-## Pilha técnica proposta (a validar no Sprint 2)
+## Executar o protótipo do Sprint 2
 
-- **Frontend:** React + TypeScript + Vite
+É necessário Node.js 22.12+ e npm.
+
+```bash
+git clone https://github.com/pscfredteixeira/aulas.git
+cd aulas/apps/web
+npm install
+npm run dev
+```
+
+Abra `http://localhost:5173` no navegador para criar uma sala. Para outro aparelho acessar o **Aulas** e permitir câmera e microfone, publique o frontend em HTTPS; links de `localhost` não funcionam entre computadores. Verifique o código com `npm run test` e `npm run build`.
+
+O protótipo serve apenas para testar vídeo. **Não há ainda quiz, moderação ou sala protegida.** Consulte [o roteiro e as limitações do Sprint 2](docs/SPRINT-2.md).
+
+## Pilha técnica e arquitetura
+
+- **Frontend:** React + TypeScript + Vite (implementado no Sprint 2)
 - **Vídeo/áudio:** VDO.Ninja incorporado no navegador (testar comportamento real da sala e restrições dos iframes)
 - **Tempo real das atividades:** Node.js + TypeScript + Socket.IO
 - **Persistência:** armazenamento simples no início, com modelo de dados preparado para banco relacional
