@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { closeQuiz, openQuiz, saveQuizDraft } from "./api";
 import type { Quiz, QuizDraftInput } from "./api";
@@ -46,7 +46,15 @@ export default function QuizPanel({ roomId, token, role, quiz, onUpdated }: Prop
   }
 
   const isTeacher = role === "teacher";
-  const canEdit = isTeacher && (!quiz || quiz.phase === "closed");
+  const canEdit = isTeacher && quiz?.phase !== "open";
+
+  useEffect(() => {
+    if (isTeacher && quiz?.phase === "draft") {
+      setPrompt(quiz.prompt);
+      setOptions(quiz.options.map(option => option.text));
+      setCorrectOptionId(quiz.correctOptionId ?? "A");
+    }
+  }, [isTeacher, quiz?.id]);
 
   return (
     <aside className="quiz-panel" aria-label={isTeacher ? "Atividade do professor" : "Atividade da aula"}>
@@ -116,7 +124,7 @@ export default function QuizPanel({ roomId, token, role, quiz, onUpdated }: Prop
       {canEdit && (
         <form className="quiz-editor" onSubmit={save}>
           {quiz?.phase === "closed" && <div className="quiz-divider" />}
-          <h3>{quiz?.phase === "closed" ? "Criar próxima pergunta" : "Criar uma pergunta"}</h3>
+          <h3>{quiz?.phase === "closed" ? "Criar próxima pergunta" : quiz?.phase === "draft" ? "Editar rascunho" : "Criar uma pergunta"}</h3>
           <label htmlFor="quiz-prompt">Enunciado</label>
           <textarea id="quiz-prompt" rows={3} minLength={10} maxLength={400} required
             value={prompt} placeholder="Escreva a pergunta para seus alunos..."
