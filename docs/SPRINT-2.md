@@ -2,7 +2,7 @@
 
 ## Estado
 
-Código do primeiro protótipo enviado para `apps/web` em 19/11/2026. O app ainda não foi validado em uma chamada real entre dois dispositivos: testes de câmera, microfone, browsers e seis participantes **pendentes**.
+Código do primeiro protótipo enviado para `apps/web` em 19/11/2026. O usuário informou que a plataforma está funcionando em seus testes; ainda não há relatório detalhado de duas pessoas simultâneas, versões de navegador ou teste com seis participantes.
 
 ## O que já existe no código
 
@@ -26,7 +26,17 @@ Código do primeiro protótipo enviado para `apps/web` em 19/11/2026. O app aind
 - Não foi comprovada a estabilidade com seis câmeras, em Safari iOS, Chrome Android ou rede lenta.
 - O status de carregamento do iframe não significa conexão de mídia bem-sucedida.
 
-## Publicação online sem instalação\n\n**Regra do projeto:** professor e aluno acessam o Aulas pelo navegador, sem Node.js, terminal ou aplicativos. O Node.js é ferramenta de compilação do GitHub, não requisito de uso.\n\nO arquivo [deploy-pages.yml](../.github/workflows/deploy-pages.yml) foi criado para publicar automaticamente o React/Vite no GitHub Pages, com testes e compilação no GitHub Actions. Endereço previsto do aplicativo: **https://pscfredteixeira.github.io/aulas/**. O [workflow de publicação](https://github.com/pscfredteixeira/aulas/actions/runs/44595144704) compilou e publicou com sucesso, **mas um workflow antigo de Jekyll está publicando o conteúdo da branch**. A origem de publicação precisa ser alterada uma única vez para GitHub Actions; caso contrário, o site pode exibir o README em vez do aplicativo. A configuração de base `/aulas/` está no Vite.\n\n**Correção obrigatória (uma única vez, feita pelo proprietário):** abra [Settings → Pages](https://github.com/pscfredteixeira/aulas/settings/pages) → **Build and deployment → Source** → escolha **GitHub Actions** (em vez de **Deploy from a branch**). Em seguida, abra [Actions → Publicar Aulas no GitHub Pages](https://github.com/pscfredteixeira/aulas/actions/workflows/deploy-pages.yml) → **Run workflow** → `main` → **Run workflow**. Quando a execução ficar verde, abra o site e atualize com Ctrl+F5. O workflow de Jekyll deve deixar de ser a origem do site. Esse ajuste não exige Node.js nem terminal. Verificar sucesso e abrir o site em dois aparelhos. Uma execução verde de `npm run build` não comprova que o site foi publicado ou que a chamada funciona.\n\nQuando o site estiver online, basta professor criar sala e enviar o convite HTTPS ao aluno, que entra sem instalar nada e apenas autoriza câmera/microfone. O uso em computador local abaixo é **opcional e exclusivo de desenvolvimento**.\n\n## Como executar localmente (opcional, somente para desenvolvedores)
+## Publicação online sem instalação
+
+**Regra do projeto:** professor e aluno acessam o Aulas pelo navegador, sem Node.js, terminal ou aplicativos. O Node.js é ferramenta de compilação do GitHub, não requisito de uso.
+
+O arquivo [deploy-pages.yml](../.github/workflows/deploy-pages.yml) foi criado para publicar automaticamente o React/Vite no GitHub Pages, com testes e compilação no GitHub Actions. Endereço previsto do aplicativo: **https://pscfredteixeira.github.io/aulas/**. O [workflow de publicação](https://github.com/pscfredteixeira/aulas/actions/runs/44595144704) compilou e publicou com sucesso, **mas um workflow antigo de Jekyll está publicando o conteúdo da branch**. A origem de publicação precisa ser alterada uma única vez para GitHub Actions; caso contrário, o site pode exibir o README em vez do aplicativo. A configuração de base `/aulas/` está no Vite.
+
+**Correção obrigatória (uma única vez, feita pelo proprietário):** abra [Settings → Pages](https://github.com/pscfredteixeira/aulas/settings/pages) → **Build and deployment → Source** → escolha **GitHub Actions** (em vez de **Deploy from a branch**). Em seguida, abra [Actions → Publicar Aulas no GitHub Pages](https://github.com/pscfredteixeira/aulas/actions/workflows/deploy-pages.yml) → **Run workflow** → `main` → **Run workflow**. Quando a execução ficar verde, abra o site e atualize com Ctrl+F5. O workflow de Jekyll deve deixar de ser a origem do site. Esse ajuste não exige Node.js nem terminal. Verificar sucesso e abrir o site em dois aparelhos. Uma execução verde de `npm run build` não comprova que o site foi publicado ou que a chamada funciona.
+
+Quando o site estiver online, basta professor criar sala e enviar o convite HTTPS ao aluno, que entra sem instalar nada e apenas autoriza câmera/microfone. O uso em computador local abaixo é **opcional e exclusivo de desenvolvimento**.
+
+## Como executar localmente (opcional, somente para desenvolvedores)
 
 Requisitos de desenvolvimento local: Node.js **22.12+** e npm. Professores e alunos **não precisam** deles.
 
@@ -69,7 +79,10 @@ Para cada teste, preencher modelo do [plano de testes](TESTES.md).
 - [x] Integração inicial do iframe VDO.Ninja.
 - [x] Teste de dispositivos e tratamento de erro.
 - [x] Testes unitários de códigos/URLs incluídos.
-- [x] Instalação/build e testes aprovados no GitHub Actions (compilação automática).\n- [x] Workflow de publicação no GitHub Pages criado.\n- [x] Deploy confirmado com sucesso pelo GitHub Actions e URL de ambiente declarada pelo workflow.\n- [ ] Verificar manualmente o carregamento da interface no endereço público em navegador real.
+- [x] Instalação/build e testes aprovados no GitHub Actions (compilação automática).
+- [x] Workflow de publicação no GitHub Pages criado.
+- [x] Deploy confirmado com sucesso pelo GitHub Actions e URL de ambiente declarada pelo workflow.
+- [ ] Verificar manualmente o carregamento da interface no endereço público em navegador real.
 - [ ] Teste de vídeo/áudio **real**, em dois dispositivos.
 - [ ] Registrar resultado e limitações dos testes em mobile.
 - [ ] Teste exploratório com até seis pessoas, quando disponível.
