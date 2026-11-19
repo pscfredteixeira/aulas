@@ -51,7 +51,7 @@ Identificadores: `RF` funcional, `RNF` não funcional. **MVP** é o primeiro pro
 
 1. Link de acesso do professor: segredo recuperável apenas por posse do link; projeto precisa de revogação, expiração e tratamento de compartilhamento indevido.
 2. Como VDO.Ninja será incorporado para conversa em grupo nos principais navegadores — validar no Sprint 2.
-3. Frontend: GitHub Pages com GitHub Actions a partir do Sprint 2. Hospedagem do backend e persistência: definir ao construir atividades em tempo real.
+3. Frontend: GitHub Pages com GitHub Actions. Backend de salas implementado no Sprint 3; falta hospedagem remota persistente com HTTPS. O armazenamento em memória é temporário e será substituído por persistência adequada antes de uso real em escala.
 4. Retenção de respostas e aviso de privacidade — definir antes de teste externo.
 5. Identificar participantes com mesmo nome e reconexões sem criar contas.
 
