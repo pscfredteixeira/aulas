@@ -79,10 +79,20 @@ function bearer(req) {
 }
 
 /** Servidor HTTP sem dependências externas. Em produção, colocar atrás de HTTPS. */
-export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], now = () => Date.now() } = {}) {
+export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], now = () => Date.now(), store = null } = {}) {
   const rooms = new Map();
   const rate = new Map();
   const origins = new Set(allowedOrigins);
+  // Serialize writes per room; avoid an older async write overwriting a newer state.
+  const writes = new Map();
+  async function persist(room) {
+    if (!store) return;
+    const previous = writes.get(room.id) ?? Promise.resolve();
+    const write = previous.catch(() => {}).then(() => store.save(room));
+    writes.set(room.id, write);
+    try { await write; }
+    finally { if (writes.get(room.id) === write) writes.delete(room.id); }
+  }
   function limit(req, kind, max, windowMs) {
     const address = req.socket.remoteAddress || "unknown";
     const key = `${address}:${kind}`;
@@ -101,7 +111,8 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     }
     return null;
   }
-  const server = createServer(async (req, res) => {
+  const server = createServer((req, res) => {
+    void (async () => {
     const origin = req.headers.origin;
     if (origin && !origins.has(origin)) {
       send(res, 403, { error: "Origem não autorizada." }); return;
@@ -115,7 +126,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     if (req.method === "OPTIONS") { res.writeHead(204, { "Cache-Control": "no-store" }); res.end(); return; }
     const url = new URL(req.url || "/", "http://localhost");
     if (req.method === "GET" && url.pathname === "/api/health") {
-      send(res, 200, { ok: true, service: "aulas-server", persistent: false }); return;
+      send(res, 200, { ok: true, service: "aulas-server", persistent: Boolean(store) }); return;
     }
     if (req.method === "POST" && url.pathname === "/api/rooms") {
       if (limit(req, "create", 20, 10 * 60_000)) { send(res, 429, { error: "Muitas salas criadas. Tente mais tarde." }); return; }
@@ -131,6 +142,8 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
           status: "open", participants: new Map(), quiz: null
         };
         rooms.set(roomId, room);
+        try { await persist(room); }
+        catch { rooms.delete(roomId); send(res, 503, { error: "Não foi possível salvar a sala. Tente novamente." }); return; }
         send(res, 201, { roomId, teacherSecret, room: publicRoom(room, now(), "teacher") }); return;
       } catch (error) {
         if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pedido inválido." });
@@ -140,8 +153,19 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close))?$/);
     if (!matched) { send(res, 404, { error: "Endereço não encontrado." }); return; }
     const [, roomId, op] = matched;
-    const room = rooms.get(roomId);
-    if (!room || now() >= room.expiresAt) { if (room) rooms.delete(roomId); send(res, 404, { error: "Sala não encontrada ou expirada." }); return; }
+    let room = rooms.get(roomId);
+    if (!room && store) {
+      // Recover a classroom (including hashes and quiz) after a Render restart.
+      room = await store.get(roomId);
+      if (room) rooms.set(roomId, room);
+    }
+    if (!room || now() >= room.expiresAt) {
+      if (room) {
+        rooms.delete(roomId);
+        if (store) await store.delete(roomId);
+      }
+      send(res, 404, { error: "Sala não encontrada ou expirada." }); return;
+    }
 
     if (req.method === "POST" && op === "join") {
       if (room.status !== "open") { send(res, 410, { error: "Esta sala foi encerrada." }); return; }
@@ -154,6 +178,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         const participantId = randomToken(12);
         const participantToken = randomToken();
         room.participants.set(participantId, { id: participantId, name, hash: digest(participantToken), lastSeen: now() });
+        await persist(room);
         send(res, 201, { participantId, participantToken, room: publicRoom(room, now()) }); return;
       } catch (error) {
         if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pedido inválido." });
@@ -194,6 +219,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
           const draft = createQuizDraft(input);
           if (draft.error) { send(res, 422, { error: draft.error }); return; }
           room.quiz = draft.quiz;
+          await persist(room);
           send(res, 201, { quiz: quizForRole(room.quiz, "teacher") }); return;
         } catch (error) {
           if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pergunta inválida." });
@@ -206,6 +232,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         }
         room.quiz.phase = "open";
         room.quiz.version++;
+        await persist(room);
         send(res, 200, { quiz: quizForRole(room.quiz, "teacher") }); return;
       }
       if (!room.quiz || room.quiz.phase !== "open") {
@@ -213,26 +240,36 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
       }
       room.quiz.phase = "closed";
       room.quiz.version++;
+      await persist(room);
       send(res, 200, { quiz: quizForRole(room.quiz, "teacher") }); return;
     }
     if (req.method === "POST" && op === "leave") {
       if (access.role !== "student") { send(res, 403, { error: "Apenas alunos podem sair por este endpoint." }); return; }
       room.participants.delete(access.participant.id);
+      await persist(room);
       send(res, 200, { ok: true }); return;
     }
     if (req.method === "POST" && op === "close") {
       if (access.role !== "teacher") { send(res, 403, { error: "Apenas o professor pode encerrar a sala." }); return; }
       room.status = "closed";
       if (room.quiz?.phase === "open") room.quiz.phase = "closed";
+      await persist(room);
       send(res, 200, { room: publicRoom(room, now(), "teacher") }); return;
     }
     if (req.method === "POST" && op === "rotate") {
       if (access.role !== "teacher") { send(res, 403, { error: "Apenas o professor pode renovar o link." }); return; }
       const teacherSecret = randomToken();
       room.teacherHash = digest(teacherSecret);
+      await persist(room);
       send(res, 200, { teacherSecret }); return;
     }
     send(res, 405, { error: "Operação não permitida." });
+    })().catch(() => {
+      // Do not log or expose secrets from failed requests.
+      if (!res.headersSent && !res.destroyed) {
+        send(res, 503, { error: "Falha ao acessar os dados da aula. Tente novamente." });
+      }
+    });
   });
   const interval = setInterval(() => {
     const timestamp = now();
@@ -247,6 +284,13 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     }
   }, CLEANUP_INTERVAL_MS);
   interval.unref();
-  server.on("close", () => clearInterval(interval));
+  const expiredCleanup = store ? setInterval(() => {
+    void store.cleanupExpired(now()).catch(() => { /* keep API available during temporary outage */ });
+  }, 60 * 60_000) : null;
+  expiredCleanup?.unref();
+  server.on("close", () => {
+    clearInterval(interval);
+    if (expiredCleanup) clearInterval(expiredCleanup);
+  });
   return server;
 }
