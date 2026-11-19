@@ -1,10 +1,29 @@
 export const API_BASE_URL = (import.meta.env.VITE_AULAS_API_URL || "").trim().replace(/\/+$/, "");
 
+export type QuizPhase = "draft" | "open" | "closed";
+
+export type Quiz = {
+  id: string;
+  prompt: string;
+  options: { id: "A" | "B" | "C" | "D"; text: string }[];
+  phase: QuizPhase;
+  version: number;
+  // Somente professores recebem essa propriedade pela API.
+  correctOptionId?: "A" | "B" | "C" | "D";
+};
+
+export type QuizDraftInput = {
+  prompt: string;
+  options: string[];
+  correctOptionId: "A" | "B" | "C" | "D";
+};
+
 export type RoomSnapshot = {
   roomId: string;
   status: "open" | "closed";
   expiresAt: string;
   teacher: string;
+  quiz: Quiz | null;
   participants: { id: string; name: string }[];
 };
 export type CreatedRoom = {
@@ -60,4 +79,14 @@ export function closeProtectedRoom(roomId: string, token: string) {
 }
 export function rotateTeacherSecret(roomId: string, token: string) {
   return api<{ teacherSecret: string }>(`/api/rooms/${roomId}/rotate`, "POST", {}, token);
+}
+
+export function saveQuizDraft(roomId: string, token: string, draft: QuizDraftInput) {
+  return api<{ quiz: Quiz }>(`/api/rooms/${roomId}/quiz`, "POST", draft, token);
+}
+export function openQuiz(roomId: string, token: string) {
+  return api<{ quiz: Quiz }>(`/api/rooms/${roomId}/quiz-open`, "POST", {}, token);
+}
+export function closeQuiz(roomId: string, token: string) {
+  return api<{ quiz: Quiz }>(`/api/rooms/${roomId}/quiz-close`, "POST", {}, token);
 }
