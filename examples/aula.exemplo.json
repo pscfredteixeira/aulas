@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "0.1.0",
+  "lessonId": "aula-exemplo-001",
+  "title": "Introdução ao pensamento crítico",
+  "description": "Exemplo fictício de plano de aula com pergunta de múltipla escolha.",
+  "language": "pt-BR",
+  "activities": [
+    {
+      "id": "quiz-001",
+      "type": "single_choice",
+      "prompt": "Ao avaliar uma afirmação, qual prática ajuda a verificar sua confiabilidade?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Comparar fontes e examinar evidências"
+        },
+        {
+          "id": "B",
+          "text": "Aceitar a primeira explicação encontrada"
+        },
+        {
+          "id": "C",
+          "text": "Confiar apenas na popularidade da afirmação"
+        },
+        {
+          "id": "D",
+          "text": "Evitar perguntas que contrariem a opinião inicial"
+        }
+      ],
+      "correctOptionId": "A",
+      "explanation": "Investigar fontes e evidências permite avaliar a qualidade de uma afirmação.",
+      "displayMode": "manual"
+    }
+  ],
+  "metadata": {
+    "origin": "aulas",
+    "version": "draft",
+    "tags": [
+      "exemplo",
+      "pensamento crítico"
+    ]
+  }
+}
