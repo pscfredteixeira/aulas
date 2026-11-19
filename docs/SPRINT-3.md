@@ -1,6 +1,6 @@
 # Sprint 3 — Acesso do professor e do aluno, sem cadastro
 
-**Estado:** implementado no código, testes automatizados; ativação pública depende de hospedar a API por HTTPS e configurar a variável `AULAS_API_URL` no GitHub. A videochamada anterior permanece disponível em modo demonstração sem o servidor. Não anunciar acesso protegido na versão pública antes dessa configuração.
+**Estado:** código implementado, testes automatizados e API hospedada em https://aulas-api-vrdo.onrender.com. GitHub Actions confirmou acesso ao endpoint de saúde e publicou o frontend com essa URL. Falta testar os fluxos em navegadores reais. A videochamada anterior permanece disponível em modo demonstração sem o servidor. Não anunciar acesso protegido na versão pública antes dessa configuração.
 
 ## Recursos implementados
 
@@ -62,8 +62,8 @@ Ainda não há quizzes, banco persistente, autenticação por conta, gravação,
 - [x] Renovar segredo invalida o link anterior (teste automatizado).
 - [x] Aluno não pode encerrar sala pelo endpoint da API (teste automatizado).
 - [x] Frontend mantém fallback de vídeo quando a API não está configurada.
-- [ ] Hospedar o backend e informar URL pública HTTPS.
-- [ ] Configurar `AULAS_API_URL` no GitHub e publicar com API.
+- [x] Hospedar o backend no Render e confirmar URL pública HTTPS.
+- [x] Configurar URL de API como fallback no workflow de publicação e concluir build/publicação.
 - [ ] Testar interface real em duas sessões com servidor remoto.
 - [ ] Verificar manualmente que o controle de encerramento corresponde ao estado do Aulas (não à moderação do VDO.Ninja).
 
