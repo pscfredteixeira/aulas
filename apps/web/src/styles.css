@@ -125,3 +125,73 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .teacher-actions { flex-direction: column; }
   .teacher-actions .button { width: 100%; }
 }
+
+/* Sprint 4 — vídeo preservado ao lado da atividade da turma */
+.lesson-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
+  gap: 18px;
+  align-items: stretch;
+}
+.lesson-video { min-width: 0; }
+.lesson-video .call-frame-wrap { height: min(75vh, 820px); }
+.quiz-panel {
+  min-width: 0;
+  max-height: min(75vh, 820px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #e7ddef;
+  border-radius: 18px;
+  background: #fff;
+  padding: 22px;
+  box-shadow: 0 12px 36px rgba(74, 48, 91, .065);
+}
+.quiz-panel-title { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.quiz-panel-title .eyebrow { display: block; margin-bottom: 6px; font-size: 10px; }
+.quiz-panel-title h2 { font-size: 20px; margin: 0; letter-spacing: -.6px; }
+.quiz-badge { display: inline-flex; flex: none; border-radius: 999px; font-size: 10px; font-weight: 800; padding: 7px 9px; }
+.quiz-badge--waiting { background: #f0ecf4; color: #72677a; }
+.quiz-badge--draft { background: #fff1df; color: #9d641e; }
+.quiz-badge--open { background: #e5f6e9; color: #286f43; }
+.quiz-badge--closed { background: #f2edf5; color: #695878; }
+.quiz-empty { border: 1px dashed #ded2e9; background: #fbf8fe; border-radius: 15px; padding: 25px 19px; text-align: center; }
+.quiz-empty-icon { display: grid; place-items: center; font-size: 25px; font-weight: 800; color: #7947b6; background: #eee3fa; margin: 0 auto 12px; border-radius: 50%; width: 52px; height: 52px; }
+.quiz-empty h3 { margin: 0 0 7px; font-size: 17px; }
+.quiz-empty p { color: #72657c; font-size: 13px; line-height: 1.5; margin: 0; }
+.quiz-question { padding-bottom: 4px; }
+.quiz-question-kicker { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #7950b3; letter-spacing: 1px; margin: 0 0 10px; }
+.quiz-question h3 { font-size: 19px; line-height: 1.35; letter-spacing: -.35px; overflow-wrap: anywhere; margin: 0 0 17px; }
+.quiz-options { list-style: none; padding: 0; margin: 0; display: grid; gap: 9px; }
+.quiz-option { border: 1px solid #e7e1ec; padding: 11px 12px; border-radius: 11px; display: flex; align-items: center; gap: 10px; line-height: 1.45; font-size: 13px; background: #fff; overflow-wrap: anywhere; }
+.quiz-option--correct { border-color: #badfc6; background: #f0fbf2; }
+.quiz-option-letter { display: grid; place-items: center; width: 28px; height: 28px; flex: none; background: #eee4f8; color: #6d3ca5; font-weight: 850; border-radius: 8px; font-size: 12px; }
+.quiz-correct-label { font-size: 10px; color: #2a7744; font-weight: 800; margin-left: auto; }
+.quiz-controls { margin-top: 16px; border-top: 1px solid #efe9f2; padding-top: 12px; }
+.quiz-controls .button { width: 100%; }
+.quiz-info { font-size: 12px; line-height: 1.55; color: #766b80; margin: 13px 0; }
+.quiz-editor { display: grid; gap: 9px; margin-top: 8px; }
+.quiz-editor h3 { margin: 8px 0 5px; font-size: 16px; }
+.quiz-editor label, .quiz-alternatives-heading { font-size: 12px; font-weight: 800; color: #463853; }
+.quiz-editor input, .quiz-editor textarea, .quiz-editor select {
+  width: 100%; background: #fff; color: #332840; font: inherit; font-size: 13px;
+  border: 1px solid #d9d2e1; border-radius: 10px; padding: 11px 12px;
+}
+.quiz-editor textarea { resize: vertical; min-height: 82px; }
+.quiz-editor .quiz-option-field { display: flex; gap: 9px; align-items: center; }
+.quiz-option-field label { display: grid; place-items: center; flex: none; width: 29px; height: 34px; border-radius: 8px; color: #7040a6; background: #f2ebfa; }
+.quiz-save { width: 100%; margin-top: 9px; }
+.quiz-divider { border-top: 1px solid #eee7f1; margin: 12px 0; }
+@media (max-width: 1040px) {
+  .lesson-workspace { grid-template-columns: minmax(0, 1fr) minmax(290px, 0.85fr); gap: 13px; }
+  .quiz-panel { padding: 17px; }
+}
+@media (max-width: 780px) {
+  .lesson-workspace { grid-template-columns: minmax(0, 1fr); }
+  .lesson-video .call-frame-wrap { height: 45vh; min-height: 290px; }
+  .quiz-panel { max-height: none; overflow-y: visible; }
+}
+@media (max-width: 560px) {
+  .quiz-panel { padding: 17px 14px; }
+  .quiz-panel-title h2 { font-size: 18px; }
+  .lesson-video .call-frame-wrap { min-height: 260px; height: 41vh; }
+}
