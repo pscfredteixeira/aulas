@@ -93,3 +93,85 @@ test("uma sala expirada deixa de aceitar ingresso e segredos", async t => {
   const state = await request(base, "GET", `/api/rooms/${created.data.roomId}/state`, undefined, created.data.teacherSecret);
   assert.equal(state.code, 404);
 });
+
+test("Sprint 4: somente professor cria, abre e encerra uma pergunta", async t => {
+  const { server, base } = await start();
+  t.after(() => new Promise(resolve => server.close(resolve)));
+
+  const created = await request(base, "POST", "/api/rooms", { name: "Professora" });
+  const { roomId, teacherSecret } = created.data;
+  const student = await request(base, "POST", `/api/rooms/${roomId}/join`, { name: "Estudante" });
+  const studentToken = student.data.participantToken;
+  const path = `/api/rooms/${roomId}`;
+  const draft = {
+    prompt: "Qual alternativa melhor descreve uma hipótese científica?",
+    options: ["Afirmação testável", "Opinião popular", "Palpite absoluto", "Certeza pessoal"],
+    correctOptionId: "A"
+  };
+  const studentAttempt = await request(base, "POST", path + "/quiz", draft, studentToken);
+  assert.equal(studentAttempt.code, 403);
+  assert.equal((await request(base, "POST", path + "/quiz-open", {}, studentToken)).code, 403);
+  assert.equal((await request(base, "POST", path + "/quiz-close", {}, studentToken)).code, 403);
+
+  const invalid = await request(base, "POST", path + "/quiz", { ...draft, options: ["A", "A", "B", "C"] }, teacherSecret);
+  assert.equal(invalid.code, 422);
+  const input = await request(base, "POST", path + "/quiz", draft, teacherSecret);
+  assert.equal(input.code, 201);
+  assert.equal(input.data.quiz.phase, "draft");
+  assert.equal(input.data.quiz.correctOptionId, "A");
+
+  const before = await request(base, "GET", path + "/state", undefined, studentToken);
+  assert.equal(before.data.room.quiz, null, "aluno não vê rascunho");
+  assert.equal((await request(base, "POST", path + "/quiz-close", {}, teacherSecret)).code, 409);
+
+  const opened = await request(base, "POST", path + "/quiz-open", {}, teacherSecret);
+  assert.equal(opened.code, 200);
+  assert.equal(opened.data.quiz.phase, "open");
+  const studentState = await request(base, "GET", path + "/state", undefined, studentToken);
+  assert.equal(studentState.code, 200);
+  assert.equal(studentState.data.room.quiz.prompt, draft.prompt);
+  assert.equal(studentState.data.room.quiz.options.length, 4);
+  assert.equal("correctOptionId" in studentState.data.room.quiz, false, "não vazar gabarito ao aluno");
+  assert.equal(JSON.stringify(studentState.data).includes("correctOptionId"), false);
+  assert.equal((await request(base, "POST", path + "/quiz", draft, teacherSecret)).code, 409);
+  assert.equal((await request(base, "POST", path + "/quiz-open", {}, teacherSecret)).code, 409);
+
+  const teacherState = await request(base, "GET", path + "/state", undefined, teacherSecret);
+  assert.equal(teacherState.data.room.quiz.correctOptionId, "A");
+
+  const closed = await request(base, "POST", path + "/quiz-close", {}, teacherSecret);
+  assert.equal(closed.code, 200);
+  assert.equal(closed.data.quiz.phase, "closed");
+  const after = await request(base, "GET", path + "/state", undefined, studentToken);
+  assert.equal(after.data.room.quiz.phase, "closed");
+  assert.equal("correctOptionId" in after.data.room.quiz, false, "encerramento não revela gabarito");
+
+  const next = await request(base, "POST", path + "/quiz", { ...draft, prompt: "Qual é a definição de variável independente?" }, teacherSecret);
+  assert.equal(next.code, 201);
+  assert.notEqual(next.data.quiz.id, input.data.quiz.id);
+  assert.equal((await request(base, "GET", path + "/state", undefined, studentToken)).data.room.quiz, null);
+
+  const otherRoom = await request(base, "POST", "/api/rooms", { name: "Outro" });
+  assert.equal((await request(base, "GET", `/api/rooms/${otherRoom.data.roomId}/state`, undefined, otherRoom.data.teacherSecret)).data.room.quiz, null);
+  assert.equal((await request(base, "POST", path + "/quiz-open", {}, otherRoom.data.teacherSecret)).code, 403);
+
+  await request(base, "POST", path + "/close", {}, teacherSecret);
+  assert.equal((await request(base, "POST", path + "/quiz-open", {}, teacherSecret)).code, 409);
+});
+
+test("Sprint 4: rascunho exige quatro opções, gabarito válido e limites de texto", async t => {
+  const { server, base } = await start();
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const created = await request(base, "POST", "/api/rooms", { name: "Docente" });
+  const path = `/api/rooms/${created.data.roomId}/quiz`;
+  const good = {
+    prompt: "Uma pergunta válida de demonstração?",
+    options: ["Uma", "Duas", "Três", "Quatro"],
+    correctOptionId: "C"
+  };
+  assert.equal((await request(base, "POST", path, { ...good, options: ["Uma", "Duas", "Três"] }, created.data.teacherSecret)).code, 422);
+  assert.equal((await request(base, "POST", path, { ...good, correctOptionId: "E" }, created.data.teacherSecret)).code, 422);
+  assert.equal((await request(base, "POST", path, { ...good, prompt: "<script>alert(1)</script>" }, created.data.teacherSecret)).code, 422);
+  assert.equal((await request(base, "POST", path, { ...good, options: ["Uma", "Duas", "<b>Teste</b>", "Quatro"] }, created.data.teacherSecret)).code, 422);
+  assert.equal((await request(base, "POST", path, good, created.data.teacherSecret)).code, 201);
+});
