@@ -31,6 +31,16 @@ Por padrão, porta 8787; `AULAS_ALLOWED_ORIGINS` é uma lista separada por vírg
 
 Todas as respostas usam JSON e `Cache-Control: no-store`. Segredos são gerados com aleatoriedade criptográfica e armazenados somente como hashes SHA-256 no servidor. A API verifica permissões em cada requisição, restringe origens e aplica limites básicos por IP. A sala expira em 12 horas; o armazenamento é **em memória** e reiniciar o processo perde as salas.
 
+## Endpoints de perguntas (Sprint 4)
+
+- `POST /api/rooms/:id/quiz` com token **do professor** e JSON no formato `{"prompt":"Pergunta?","options":["A","B","C","D"],"correctOptionId":"A"}` cria/substitui o rascunho (quatro alternativas obrigatórias).
+- `POST /api/rooms/:id/quiz-open` com token do professor abre o rascunho para os alunos.
+- `POST /api/rooms/:id/quiz-close` com token do professor encerra a pergunta aberta.
+- `GET /api/rooms/:id/state` passa a incluir `room.quiz`; **alunos não recebem rascunhos nem `correctOptionId`**, nem depois de encerrada.
+- As transições são `draft → open → closed`. Outra pergunta só pode substituir uma pergunta **encerrada**, nunca uma aberta.
+
+O envio de respostas e a revelação de gabarito para a turma **não estão implementados** no Sprint 4. As perguntas ficam somente na memória e são perdidas caso o serviço do Render reinicie.
+
 ## Limites importantes
 
 **O controle de acesso protege os endpoints do Aulas, não a sala audiovisual do VDO.Ninja.** Conhecer o nome real da sala no VDO.Ninja permite tentar acessá-la diretamente. O encerramento de sala do Aulas não remove pessoas conectadas no VDO.Ninja em outra aba, e não equivale à moderação de chamada. A aplicação usa o código de sala compartilhado para vídeo. Portanto, não use esta versão para discussões confidenciais nem para classes em produção com dados sensíveis.
