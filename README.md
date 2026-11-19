@@ -59,6 +59,16 @@ npm run dev
 
 O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo ainda não tem quiz e o VDO.Ninja não é protegido pela API de salas**; não utilizá-lo com dados sensíveis.
 
+## Ativar a API sem instalar nada — preparação concluída
+
+O backend do Sprint 3 está pronto para **implantação de teste** pelo Render. O botão abaixo cria a configuração de hospedagem a partir do `render.yaml` do próprio repositório:
+
+[![Implantar no Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/pscfredteixeira/aulas)
+
+**A implantação ainda exige que o proprietário do projeto autorize o Render e conecte o GitHub.** Depois, é necessário copiar a URL HTTPS fornecida pelo Render para a variável `AULAS_API_URL` no GitHub Actions e republicar o site. [Passo a passo (sem terminal)](docs/IMPLANTAR-API.md).
+
+O plano gratuito do Render pode hibernar e reiniciar a API, perdendo salas que ainda ficam em memória. Portanto, isto serve para testes: **não use este protótipo em aulas reais com dados sensíveis**.
+
 ## Sprint 3 — Sala do professor e dos alunos
 
 O código do Sprint 3 já existe: professor cria uma sala com um link privado, alunos recebem outro link e o servidor verifica permissões para **renovar o link de professor** e **encerrar a aula no Aulas**. Esses comandos precisam de um serviço remoto.
