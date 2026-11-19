@@ -65,3 +65,9 @@ Próxima ação:
 ```
 
 Nenhum dos testes de execução T01–T12 foi realizado neste Sprint 1.
+
+### T13 — Acesso sem instalações
+**Dado** um computador ou celular com navegador moderno e conexão à internet, **quando** professor ou aluno abrir o endereço HTTPS do Aulas, **então** deve acessar a interface sem instalar Node.js, executar comandos ou baixar extensões/aplicativos, precisando apenas conceder acesso a câmera/microfone para usar vídeo. Testar em computador sem ambiente de desenvolvimento instalado.
+
+### T14 — Publicação automática
+**Dado** código atualizado em `apps/web`, **quando** o workflow de GitHub Pages executar, **então** os testes e o build devem passar, a publicação deve concluir, e a página deve carregar com recursos estáticos no caminho `/aulas/`. Validar link no navegador: workflow verde não substitui inspeção do site.
