@@ -41,11 +41,11 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 
 **Professores e alunos não precisam instalar Node.js, fazer cadastro, baixar aplicativos ou executar comandos.** O sistema é um site acessado por link, com autorização de câmera e microfone no próprio navegador.
 
-**Endereço publicado pelo GitHub Pages:** https://pscfredteixeira.github.io/aulas/
+**Endereço que receberá o aplicativo após ajustar a origem do Pages:** https://pscfredteixeira.github.io/aulas/
 
 A publicação do frontend é automatizada pelo arquivo [deploy-pages.yml](.github/workflows/deploy-pages.yml): ao atualizar o código em `apps/web`, o GitHub instala as dependências, testa, compila e disponibiliza os arquivos. A primeira publicação foi **concluída com sucesso** no [GitHub Actions](https://github.com/pscfredteixeira/aulas/actions/runs/44595144704). O teste audiovisual entre dois aparelhos continua pendente.
 
-A publicação atual já está configurada. Para manutenção futura: a origem de publicação fica em **Settings → Pages**; veja [as instruções](docs/SPRINT-2.md#publicação-online-sem-instalação).
+**Ação manual indispensável:** abra [Settings → Pages](https://github.com/pscfredteixeira/aulas/settings/pages), localize **Build and deployment → Source**, troque de **Deploy from a branch** para **GitHub Actions**. Depois vá a [Actions → Publicar Aulas no GitHub Pages](https://github.com/pscfredteixeira/aulas/actions/workflows/deploy-pages.yml), clique em **Run workflow**, selecione `main` e execute. Atualize o endereço do Aulas. Consulte [as instruções completas](docs/SPRINT-2.md#publicação-online-sem-instalação).
 
 Para quem **quiser programar/testar localmente** (opcional), é preciso Node.js 22.12+:
 
