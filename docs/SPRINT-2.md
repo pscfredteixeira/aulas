@@ -26,9 +26,9 @@ Código do primeiro protótipo enviado para `apps/web` em 19/11/2026. O app aind
 - Não foi comprovada a estabilidade com seis câmeras, em Safari iOS, Chrome Android ou rede lenta.
 - O status de carregamento do iframe não significa conexão de mídia bem-sucedida.
 
-## Como executar
+## Publicação online sem instalação\n\n**Regra do projeto:** professor e aluno acessam o Aulas pelo navegador, sem Node.js, terminal ou aplicativos. O Node.js é ferramenta de compilação do GitHub, não requisito de uso.\n\nO arquivo [deploy-pages.yml](../.github/workflows/deploy-pages.yml) foi criado para publicar automaticamente o React/Vite no GitHub Pages, com testes e compilação no GitHub Actions. Endereço previsto: **https://pscfredteixeira.github.io/aulas/**. A configuração de base `/aulas/` está no Vite.\n\n**Etapa inicial no GitHub (se ainda não estiver configurada):** abrir o repositório → **Settings → Pages → Build and deployment → Source → GitHub Actions**. Após selecionar, executar/reexecutar o workflow **Publicar Aulas no GitHub Pages** em **Actions**. Verificar sucesso e abrir o site em dois aparelhos. Uma execução verde de `npm run build` não comprova que o site foi publicado ou que a chamada funciona.\n\nQuando o site estiver online, basta professor criar sala e enviar o convite HTTPS ao aluno, que entra sem instalar nada e apenas autoriza câmera/microfone. O uso em computador local abaixo é **opcional e exclusivo de desenvolvimento**.\n\n## Como executar localmente (opcional, somente para desenvolvedores)
 
-Requisitos: Node.js **22.12+** e npm; navegador moderno; conexão à internet para acessar VDO.Ninja.
+Requisitos de desenvolvimento local: Node.js **22.12+** e npm. Professores e alunos **não precisam** deles.
 
 ```bash
 git clone https://github.com/pscfredteixeira/aulas.git
@@ -69,7 +69,7 @@ Para cada teste, preencher modelo do [plano de testes](TESTES.md).
 - [x] Integração inicial do iframe VDO.Ninja.
 - [x] Teste de dispositivos e tratamento de erro.
 - [x] Testes unitários de códigos/URLs incluídos.
-- [ ] Instalação/build executados e aprovados em ambiente com dependências.
+- [x] Instalação/build e testes aprovados no GitHub Actions (compilação automática).\n- [x] Workflow de publicação no GitHub Pages criado; **a confirmação do deploy e da URL ainda depende de verificação**.\n- [ ] Confirmar publicação efetiva do site via HTTPS.
 - [ ] Teste de vídeo/áudio **real**, em dois dispositivos.
 - [ ] Registrar resultado e limitações dos testes em mobile.
 - [ ] Teste exploratório com até seis pessoas, quando disponível.
