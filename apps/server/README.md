@@ -41,6 +41,14 @@ Todas as respostas usam JSON e `Cache-Control: no-store`. Segredos são gerados 
 
 O envio de respostas e a revelação de gabarito para a turma **não estão implementados** no Sprint 4. As perguntas ficam somente na memória e são perdidas caso o serviço do Render reinicie.
 
+## Banco de salas no Firebase (preparado)
+
+O backend suporta **Firestore**: basta configurar a variável privada `FIREBASE_SERVICE_ACCOUNT_JSON` no serviço Render, com o JSON integral da conta de serviço Firebase Admin. Sem a variável, a API continua em memória para testes.
+
+Com Firestore ativo, o endpoint `GET /api/health` passa a informar `"persistent":true`. As salas, participantes e quiz são recuperáveis após reinícios até a expiração normal da sala (12h). O frontend e os usuários nunca recebem a credencial do Firebase.
+
+[Configuração segura, passo a passo](../../docs/FIREBASE.md). Não inserir a chave no GitHub e não compartilhar em mensagens.
+
 ## Limites importantes
 
 **O controle de acesso protege os endpoints do Aulas, não a sala audiovisual do VDO.Ninja.** Conhecer o nome real da sala no VDO.Ninja permite tentar acessá-la diretamente. O encerramento de sala do Aulas não remove pessoas conectadas no VDO.Ninja em outra aba, e não equivale à moderação de chamada. A aplicação usa o código de sala compartilhado para vídeo. Portanto, não use esta versão para discussões confidenciais nem para classes em produção com dados sensíveis.
