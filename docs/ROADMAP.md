@@ -22,12 +22,12 @@ Entregas:
 
 - Iniciar frontend React/TypeScript/Vite.
 - Tela inicial simples para entrar com nome e testar dispositivos.
-- Integrar sala de vídeo com professor e participantes.
+- Integrar sala de vídeo com professor e participantes.\n- Configurar publicação automática do site pelo GitHub Pages usando GitHub Actions; verificar resultado do deploy e configurar a origem Pages se necessário.
 - Investigar controles e limites do iframe.
 - Documentar o que funciona no desktop, Safari iOS e Chrome Android.
 - Teste com **duas pessoas** primeiro, depois até **seis**, sem exigir que a integração de quiz esteja pronta.
 
-**Pronto quando:** comunicação de vídeo e áudio comprovada em teste real em dois dispositivos, e relato de limitações; seis pessoas são **meta do teste ampliado**, não promessa de suporte.
+**Pronto quando:** frontend publicado via HTTPS e comunicação de vídeo e áudio comprovada em teste real em dois dispositivos, com limitações registradas; seis pessoas são **meta do teste ampliado**, não promessa de suporte. A publicação do código, sozinha, não valida a chamada.
 
 ## Sprint 3 — Sala e papéis sem cadastro
 
@@ -85,12 +85,12 @@ Entregas:
 - **Não** implementar integração direta até existir API/interface estável do Atelier.
 - Não compartilhar respostas individuais por padrão.
 
-## Sprint 9 — Testes externos e publicação
+## Sprint 9 — Testes externos e preparação de produção
 
 - Piloto com professores de áreas diferentes.
 - Auditoria de fluxos de acesso por link, privacidade e retenção.
 - Testes de compatibilidade, redes lentas e comportamento com múltiplas câmeras.
-- Hospedagem com HTTPS e backend WebSocket persistente.
+- Consolidar infraestrutura de produção (frontend já publicado desde o Sprint 2, backend WebSocket persistente e monitoramento).
 - Documentação de uso e solução de problemas.
 
 ## Decisões para cada entrega
@@ -106,3 +106,4 @@ Ao encerrar um sprint, registrar:
 **Essencial:** áudio/vídeo, sala sem cadastro com controle seguro, quiz e respostas sincronizadas.  
 **Depois:** mais tipos de atividades e biblioteca.  
 **Por último:** integração Atelier, recursos avançados e escala.
+\n## Regra permanente de distribuição\n\nProfessores e alunos não instalam Node.js, aplicativos ou extensões: acessam o Aulas pelo navegador em HTTPS e autorizam câmera/microfone. O Node.js é usado somente na automação de build e, futuramente, no servidor de quizzes; nunca é requisito para participantes.\n
