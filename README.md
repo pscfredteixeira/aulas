@@ -3,7 +3,7 @@
 Plataforma web de **aulas ao vivo e interativas**: professor e alunos participam com câmera e microfone, enquanto o professor apresenta quizzes e outras atividades sem interromper a videochamada.
 
 > **Estado:** Sprint 2 — frontend de demonstração implementado, com integração inicial ao VDO.Ninja. **A chamada entre dois dispositivos ainda precisa ser testada.**  
-> **Princípio da primeira versão:** participar e criar aulas sem exigir cadastro/login.
+> **Regra permanente:** professores e alunos usam apenas o navegador — sem Node.js, terminal, extensões ou instalação de aplicativos. O acesso continua sem cadastro na primeira versão.
 > **Importante:** a prova de conceito do Sprint 2 não separa permissões de professor e aluno; isso será implementado com validação no servidor no Sprint 3.
 
 ## Visão do produto
@@ -34,12 +34,20 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 - [Arquitetura e decisões técnicas](docs/ARQUITETURA.md)
 - [Roadmap e sprints](docs/ROADMAP.md)
 - [Critérios de aceite do Sprint 1 e próximos testes](docs/TESTES.md)
-- [Sprint 2 — implementação, testes pendentes e execução local](docs/SPRINT-2.md)
+- [Sprint 2 — implementação, testes e publicação online](docs/SPRINT-2.md)
 - [Modelo inicial de uma aula em JSON](examples/aula.exemplo.json)
 
-## Executar o protótipo do Sprint 2
+## Usar o Aulas sem instalar nada
 
-É necessário Node.js 22.12+ e npm.
+**Professores e alunos não precisam instalar Node.js, fazer cadastro, baixar aplicativos ou executar comandos.** O sistema é um site acessado por link, com autorização de câmera e microfone no próprio navegador.
+
+**Endereço previsto após ativação do GitHub Pages com GitHub Actions:** https://pscfredteixeira.github.io/aulas/
+
+A publicação do frontend é automatizada pelo arquivo [deploy-pages.yml](.github/workflows/deploy-pages.yml): ao atualizar o código em `apps/web`, o GitHub instala as dependências, testa, compila e disponibiliza os arquivos. **O site só estará confirmado depois de o workflow de publicação ser concluído com sucesso.**
+
+**Atenção ao primeiro uso:** o responsável pelo repositório pode precisar ir em **Settings → Pages → Build and deployment → Source → GitHub Actions** e selecionar essa origem. Veja [as instruções](docs/SPRINT-2.md#publicação-online-sem-instalação).
+
+Para quem **quiser programar/testar localmente** (opcional), é preciso Node.js 22.12+:
 
 ```bash
 git clone https://github.com/pscfredteixeira/aulas.git
@@ -48,9 +56,7 @@ npm install
 npm run dev
 ```
 
-Abra `http://localhost:5173` no navegador para criar uma sala. Para outro aparelho acessar o **Aulas** e permitir câmera e microfone, publique o frontend em HTTPS; links de `localhost` não funcionam entre computadores. Verifique o código com `npm run test` e `npm run build`.
-
-O protótipo serve apenas para testar vídeo. **Não há ainda quiz, moderação ou sala protegida.** Consulte [o roteiro e as limitações do Sprint 2](docs/SPRINT-2.md).
+O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo do Sprint 2 ainda não tem quiz, moderação ou acesso protegido**; não utilizá-lo com dados sensíveis.
 
 ## Pilha técnica e arquitetura
 
