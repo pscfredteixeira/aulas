@@ -42,6 +42,11 @@ jobs:
           AULAS_API_URL: ${{ vars.AULAS_API_URL || 'https://aulas-api-vrdo.onrender.com' }}
         run: |
           curl --fail --silent --show-error --retry 3 --retry-delay 5 --max-time 90 "${AULAS_API_URL%/}/api/health" | grep -q '"ok":true'
+      - name: Testar entrada de aluno na API pública
+        env:
+          AULAS_API_URL: ${{ vars.AULAS_API_URL || 'https://aulas-api-vrdo.onrender.com' }}
+          AULAS_ORIGIN: https://pscfredteixeira.github.io
+        run: node ../server/tests/live-smoke.mjs
       - name: Compilar site
         env:
           VITE_AULAS_API_URL: ${{ vars.AULAS_API_URL || 'https://aulas-api-vrdo.onrender.com' }}
