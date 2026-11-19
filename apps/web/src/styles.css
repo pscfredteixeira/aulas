@@ -195,3 +195,27 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .quiz-panel-title h2 { font-size: 18px; }
   .lesson-video .call-frame-wrap { min-height: 260px; height: 41vh; }
 }
+
+/* Convite de aluno e contingência se o servidor gratuito reiniciar */
+.student-invite-notice {
+  background: #f2ecfc;
+  border: 1px solid #ddcbee;
+  color: #4e3372;
+  padding: 13px 14px;
+  margin: 4px 0 22px;
+  border-radius: 11px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.video-only-box {
+  margin: 15px 0 18px;
+  border: 1px solid #efd1af;
+  border-radius: 12px;
+  padding: 15px;
+  color: #6b4a33;
+  background: #fff6eb;
+}
+.video-only-box strong { font-size: 13px; }
+.video-only-box p { font-size: 12px; line-height: 1.55; margin: 8px 0 13px; }
+.video-only-box .button { width: 100%; }
+.join-button { line-height: 1.35; }
