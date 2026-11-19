@@ -5,6 +5,7 @@ import {
   fetchRoomState, joinProtectedRoom, leaveProtectedRoom, rotateTeacherSecret
 } from "./api";
 import type { RoomSnapshot } from "./api";
+import QuizPanel from "./QuizPanel";
 import { createRoomId, inviteUrl, isRoomId, readRoomId, readTeacherSecret, teacherUrl, vdoUrl } from "./room";
 
 type DeviceStatus = "idle" | "testing" | "ready" | "error";
@@ -86,12 +87,15 @@ export default function App() {
         }
       } catch (error) {
         if (!active) return;
-        setJoined(false);
-        setErrorMessage(error instanceof Error ? error.message : "Não foi possível atualizar a sala.");
+        // Falha breve da API não deve derrubar o vídeo em andamento.
+        setErrorMessage(error instanceof Error
+          ? `Não foi possível sincronizar a atividade: ${error.message}. Tentaremos novamente.`
+          : "A sincronização falhou temporariamente. Tentaremos novamente.");
       }
     }
     void sync();
-    const timer = window.setInterval(() => { void sync(); }, 9000);
+    // Sprint 4: atualização a cada 3 s; eventos instantâneos ficam para o Sprint 5.
+    const timer = window.setInterval(() => { void sync(); }, 3000);
     return () => { active = false; clearInterval(timer); };
   }, [joined, hasServer, authToken, hasValidRoom, room]);
 
@@ -240,7 +244,7 @@ export default function App() {
           <span>Aulas<span className="logo-dot">.</span></span>
         </a>
         <span className="prototype-label">
-          <span className="status-dot" /> {hasServer ? "Sala de aula · Sprint 3" : "Sala de teste · Sprint 3"}
+          <span className="status-dot" /> {hasServer ? "Aulas interativas · Sprint 4" : "Sala de teste · Sprint 4"}
         </span>
       </header>
 
@@ -263,16 +267,29 @@ export default function App() {
               </div>
             )}
 
-            <div className="call-frame-wrap">
-              {!frameLoaded && <div className="loading-overlay" role="status">Carregando interface de vídeo…</div>}
-              <iframe
-                title="Videochamada em grupo VDO.Ninja"
-                src={mediaUrl}
-                allow="camera; microphone; autoplay; display-capture; fullscreen; picture-in-picture"
-                allowFullScreen
-                referrerPolicy="no-referrer"
-                onLoad={() => setFrameLoaded(true)}
-              />
+            <div className="lesson-workspace">
+              <div className="lesson-video">
+                <div className="call-frame-wrap">
+                  {!frameLoaded && <div className="loading-overlay" role="status">Carregando interface de vídeo…</div>}
+                  <iframe
+                    title="Videochamada em grupo VDO.Ninja"
+                    src={mediaUrl}
+                    allow="camera; microphone; autoplay; display-capture; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    referrerPolicy="no-referrer"
+                    onLoad={() => setFrameLoaded(true)}
+                  />
+                </div>
+              </div>
+              {hasServer && (role === "teacher" || role === "student") && (
+                <QuizPanel
+                  roomId={room}
+                  token={authToken}
+                  role={role}
+                  quiz={snapshot?.quiz ?? null}
+                  onUpdated={quiz => setSnapshot(previous => previous ? { ...previous, quiz } : previous)}
+                />
+              )}
             </div>
 
             <div className="call-footer">
@@ -312,7 +329,7 @@ export default function App() {
               <div className="eyebrow">Aulas mais próximas, mesmo à distância</div>
               <h1>Sua sala de aula.<br /><em>Ao vivo, de verdade.</em></h1>
               <p>Professor e alunos juntos com câmera e microfone, sem instalar nada.
-                Estamos preparando o ambiente para os quizzes interativos.</p>
+                Crie uma pergunta e apresente-a à turma durante a videochamada.</p>
               <div className="hero-features" aria-label="Características">
                 <span>Sem cadastro</span><span>Vídeo em grupo</span><span>Convite por link</span>
               </div>
