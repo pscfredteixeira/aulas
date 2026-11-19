@@ -96,6 +96,14 @@ Dados mínimos previstos: ID da sala, nome de exibição, identificador efêmero
 
 O formato JSON conterá `schemaVersion`, `lessonId`, `title` e `activities`. Aulas importadas podem ser reutilizadas, mas dados individuais de alunos não devem entrar automaticamente no Atelier. Contratos versionados e migração explícita evitarão quebrar conteúdos antigos.
 
-## Deploy (a definir)
+## Publicação do frontend (iniciada no Sprint 2)
+
+O `apps/web` é um aplicativo estático de React/Vite. O workflow `.github/workflows/deploy-pages.yml` executa Node.js **apenas nos servidores do GitHub**, verifica, compila e envia `apps/web/dist` para o GitHub Pages. A configuração de build define `base: "/aulas/"` no modo de produção para o site de projeto `https://pscfredteixeira.github.io/aulas/`.
+
+**Nenhum professor ou aluno precisa instalar Node.js ou usar terminal.** O frontend é entregue pelo navegador HTTPS. A origem de publicação deve estar configurada como **GitHub Actions** nas configurações do repositório. O deploy não deve ser anunciado como funcional sem verificação da execução.
+
+O futuro serviço Socket.IO não roda no GitHub Pages; precisará de hospedagem própria com HTTPS/WebSocket, invisível aos usuários e sem instalações locais.
+
+## Deploy e backend (a definir)
 
 Desenvolvimento local primeiro. Hospedagem posterior deve oferecer HTTPS e conexão WebSocket persistente para Socket.IO; não pressupor que uma hospedagem exclusivamente estática ou serverless de curta duração comporte o backend de tempo real.
