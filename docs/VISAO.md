@@ -34,7 +34,7 @@ Não haverá painel de administrador na primeira versão. Monitoramento técnico
 
 ## Princípios
 
-- **Baixa fricção:** não exigir cadastro para testar ou participar.
+- **Baixa fricção:** não exigir cadastro para testar ou participar.\n- **Sem instalação, permanentemente:** professor e aluno acessam por link HTTPS, sem Node.js, terminal, aplicativos ou extensões; apenas permissões normais de câmera/microfone.
 - **Professor controla o ritmo:** atividades acionadas manualmente.
 - **Câmeras presentes:** vídeo e áudio continuam durante o quiz.
 - **Acessibilidade:** interface em português, teclado, contraste e textos legíveis.
