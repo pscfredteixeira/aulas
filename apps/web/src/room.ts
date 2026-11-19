@@ -36,3 +36,16 @@ export function vdoUrl(room: string, name: string): string {
   url.searchParams.set("showlabels", "");
   return url.toString();
 }
+
+/** Link do professor: segredo apenas no fragmento, jamais no convite de aluno. */
+export function readTeacherSecret(hash: string): string | null {
+  const secret = new URLSearchParams(hash.replace(/^#/, "")).get("teacher");
+  return secret && /^[A-Za-z0-9_-]{43}$/.test(secret) ? secret : null;
+}
+
+export function teacherUrl(room: string, secret: string, baseUrl: string): string {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(secret)) throw new Error("Segredo de professor inválido.");
+  const url = new URL(inviteUrl(room, baseUrl));
+  url.hash = new URLSearchParams({ teacher: secret }).toString();
+  return url.toString();
+}
