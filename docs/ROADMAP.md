@@ -40,7 +40,7 @@ Entregas:
 - Entrada/saída, identificação efêmera, encerramento, revogação.
 - Aviso de privacidade e testes básicos de acesso indevido.
 
-**Pronto quando:** URL de aluno não consegue exercer controle de professor, mesmo manipulando requisições. **Código e testes de servidor implementados**; falta hospedar a API em HTTPS e testar com pessoas reais. O GitHub Pages, sem backend configurado, fica no modo audiovisual de teste. Ver [Sprint 3](SPRINT-3.md).
+**Pronto quando:** URL de aluno não consegue exercer controle de professor, mesmo manipulando requisições. **Código e testes de servidor implementados**; falta hospedar a API em HTTPS e testar com pessoas reais. O backend foi hospedado no Render e conectado ao frontend pelo GitHub Actions; a verificação com dois participantes reais permanece pendente. Ver [Sprint 3](SPRINT-3.md).
 
 ## Sprint 4 — Construção e exibição de quiz
 
@@ -51,7 +51,7 @@ Entregas:
 - Estado de atividade no servidor.
 - Interface legível ao lado de vídeo, inclusive no celular.
 
-**Pronto quando:** professor inicia pergunta e aluno consegue visualizar durante a chamada.
+**Pronto quando:** professor inicia pergunta e aluno consegue visualizar durante a chamada. **Implementado em código no Sprint 4:** editor de quatro alternativas, rascunho, abrir e encerrar, visualização sem gabarito para aluno e consulta de estado a cada ~3 segundos. Conferir a publicação do backend e um teste real com dois dispositivos. [Detalhes](SPRINT-4.md).
 
 ## Sprint 5 — Resposta em tempo real
 
