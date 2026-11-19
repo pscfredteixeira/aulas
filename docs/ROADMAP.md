@@ -111,3 +111,8 @@ Ao encerrar um sprint, registrar:
 ## Regra permanente de distribuição
 
 Professores e alunos não instalam Node.js, aplicativos ou extensões: acessam o Aulas pelo navegador em HTTPS e autorizam câmera/microfone. O Node.js é usado somente na automação de build e, futuramente, no servidor de quizzes; nunca é requisito para participantes.
+
+
+## Correção transversal — persistência de salas
+
+Após o relato de convites que falhavam depois de atualizações, foi implementada a camada opcional de **Cloud Firestore** para restaurar sessões, credenciais protegidas e quizzes após reinícios. **Código/testes prontos; ativação pendente de credenciais privadas no Render.** Não considerar os convites persistentes até o indicador `persistent:true` aparecer em `/api/health`. Veja [Firebase no Aulas](FIREBASE.md).
