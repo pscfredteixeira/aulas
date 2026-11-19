@@ -2,7 +2,7 @@
 
 Plataforma web de **aulas ao vivo e interativas**: professor e alunos participam com câmera e microfone, enquanto o professor apresenta quizzes e outras atividades sem interromper a videochamada.
 
-> **Estado:** Sprint 3 com servidor hospedado no Render e integração publicada pelo GitHub Actions. Verificação manual do uso de links de professor e aluno ainda pendente. O usuário relatou que a interface está funcionando; testes externos de carga e moderação seguem pendentes.  
+> **Estado:** Sprint 4 — criação e exibição de perguntas durante a videoaula implementadas. Votação e apuração ainda não disponíveis (Sprint 5). A confirmação audiovisual em dois dispositivos continua pendente.  
 > **Regra permanente:** professores e alunos usam apenas o navegador — sem Node.js, terminal, extensões ou instalação de aplicativos. O acesso continua sem cadastro na primeira versão.
 > **Importante:** as permissões de professor e aluno são verificadas no backend hospedado em https://aulas-api-vrdo.onrender.com. O GitHub Actions já compilou o site com a API, mas os fluxos devem ser verificados em navegadores reais.
 
@@ -36,17 +36,18 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 - [Critérios de aceite do Sprint 1 e próximos testes](docs/TESTES.md)
 - [Sprint 2 — implementação, testes e publicação online](docs/SPRINT-2.md)
 - [Sprint 3 — sala protegida, implantação da API e limites](docs/SPRINT-3.md)
+- [Sprint 4 — edição e apresentação de perguntas durante a chamada](docs/SPRINT-4.md)
 - [Modelo inicial de uma aula em JSON](examples/aula.exemplo.json)
 
 ## Usar o Aulas sem instalar nada
 
 **Professores e alunos não precisam instalar Node.js, fazer cadastro, baixar aplicativos ou executar comandos.** O sistema é um site acessado por link, com autorização de câmera e microfone no próprio navegador.
 
-**Endereço que receberá o aplicativo após ajustar a origem do Pages:** https://pscfredteixeira.github.io/aulas/
+**Site Aulas (frontend publicado):** https://pscfredteixeira.github.io/aulas/
 
 A publicação do frontend é automatizada pelo arquivo [deploy-pages.yml](.github/workflows/deploy-pages.yml): ao atualizar o código em `apps/web`, o GitHub instala as dependências, testa, compila e disponibiliza os arquivos. A primeira publicação foi **concluída com sucesso** no [GitHub Actions](https://github.com/pscfredteixeira/aulas/actions/runs/44595144704). O teste audiovisual entre dois aparelhos continua pendente.
 
-**Ação manual indispensável:** abra [Settings → Pages](https://github.com/pscfredteixeira/aulas/settings/pages), localize **Build and deployment → Source**, troque de **Deploy from a branch** para **GitHub Actions**. Depois vá a [Actions → Publicar Aulas no GitHub Pages](https://github.com/pscfredteixeira/aulas/actions/workflows/deploy-pages.yml), clique em **Run workflow**, selecione `main` e execute. Atualize o endereço do Aulas. Consulte [as instruções completas](docs/SPRINT-2.md#publicação-online-sem-instalação).
+**Se o site exibir o README em vez da interface:** confira em [Settings → Pages](https://github.com/pscfredteixeira/aulas/settings/pages) se a origem é **GitHub Actions** e consulte [as instruções](docs/SPRINT-2.md#publicação-online-sem-instalação).
 
 Para quem **quiser programar/testar localmente** (opcional), é preciso Node.js 22.12+:
 
@@ -57,7 +58,7 @@ npm install
 npm run dev
 ```
 
-O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo ainda não tem quiz e o VDO.Ninja não é protegido pela API de salas**; não utilizá-lo com dados sensíveis.
+O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo exibe perguntas, mas ainda não recebe votos; o VDO.Ninja não é protegido pela API de salas.** Não o utilize com dados sensíveis.
 
 ## Ativar a API sem instalar nada — preparação concluída
 
@@ -92,8 +93,8 @@ As perguntas são temporárias: ficam apenas na memória do Render e podem desap
 
 - **Frontend:** React + TypeScript + Vite (implementado no Sprint 2)
 - **Vídeo/áudio:** VDO.Ninja incorporado no navegador (testar comportamento real da sala e restrições dos iframes)
-- **Tempo real das atividades:** Node.js + TypeScript + Socket.IO
-- **Persistência:** armazenamento simples no início, com modelo de dados preparado para banco relacional
+- **Atividades:** Node.js com HTTP e atualização periódica (~3 s) no Sprint 4; sincronização de votos por WebSocket/Socket.IO prevista para o Sprint 5
+- **Persistência:** atualmente apenas em memória no Render Free (salas e perguntas são perdidas em reinícios); banco persistente em etapa posterior
 - **Versionamento:** GitHub, com separação entre frontend, backend e conteúdo
 
 A tecnologia audiovisual e a sincronização dos quizzes são **subsistemas distintos**. Não presumir que a API do VDO.Ninja sincronize automaticamente os quizzes.
