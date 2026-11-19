@@ -41,11 +41,11 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 
 **Professores e alunos não precisam instalar Node.js, fazer cadastro, baixar aplicativos ou executar comandos.** O sistema é um site acessado por link, com autorização de câmera e microfone no próprio navegador.
 
-**Endereço previsto após ativação do GitHub Pages com GitHub Actions:** https://pscfredteixeira.github.io/aulas/
+**Endereço publicado pelo GitHub Pages:** https://pscfredteixeira.github.io/aulas/
 
-A publicação do frontend é automatizada pelo arquivo [deploy-pages.yml](.github/workflows/deploy-pages.yml): ao atualizar o código em `apps/web`, o GitHub instala as dependências, testa, compila e disponibiliza os arquivos. **O site só estará confirmado depois de o workflow de publicação ser concluído com sucesso.**
+A publicação do frontend é automatizada pelo arquivo [deploy-pages.yml](.github/workflows/deploy-pages.yml): ao atualizar o código em `apps/web`, o GitHub instala as dependências, testa, compila e disponibiliza os arquivos. A primeira publicação foi **concluída com sucesso** no [GitHub Actions](https://github.com/pscfredteixeira/aulas/actions/runs/44595144704). O teste audiovisual entre dois aparelhos continua pendente.
 
-**Atenção ao primeiro uso:** o responsável pelo repositório pode precisar ir em **Settings → Pages → Build and deployment → Source → GitHub Actions** e selecionar essa origem. Veja [as instruções](docs/SPRINT-2.md#publicação-online-sem-instalação).
+A publicação atual já está configurada. Para manutenção futura: a origem de publicação fica em **Settings → Pages**; veja [as instruções](docs/SPRINT-2.md#publicação-online-sem-instalação).
 
 Para quem **quiser programar/testar localmente** (opcional), é preciso Node.js 22.12+:
 
