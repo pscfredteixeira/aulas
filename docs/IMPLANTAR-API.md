@@ -1,3 +1,5 @@
+> **Atualização de 19/11/2026:** a API foi criada no Render em https://aulas-api-vrdo.onrender.com e o deploy ficou `live`. O GitHub Actions publicou a interface apontando para ela; as instruções de criação de conta e configuração abaixo ficam como referência para reinstalação ou mudança de hospedagem. **Não é necessário repetir esses passos agora.**
+
 # Colocar o servidor de salas no ar sem instalar nada
 
 ## O que isso ativa
