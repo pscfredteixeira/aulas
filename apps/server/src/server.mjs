@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createQuizDraft, quizForRole } from "./quiz.mjs";
 
 const ROOM_RE = /^aulas-[0-9a-f]{24}$/;
 const MAX_PARTICIPANTS = 30;
@@ -60,12 +61,13 @@ function readJSON(req) {
     req.on("error", reject);
   });
 }
-function publicRoom(room, now) {
+function publicRoom(room, now, role = "student") {
   return {
     roomId: room.id,
     status: room.status,
     expiresAt: new Date(room.expiresAt).toISOString(),
     teacher: room.teacherName,
+    quiz: quizForRole(room.quiz, role),
     participants: [...room.participants.values()]
       .filter(p => now - p.lastSeen < ACTIVE_MS)
       .map(p => ({ id: p.id, name: p.name }))
@@ -126,16 +128,16 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         const room = {
           id: roomId, teacherName, teacherHash: digest(teacherSecret),
           expiresAt: now() + ROOM_TTL_MS,
-          status: "open", participants: new Map()
+          status: "open", participants: new Map(), quiz: null
         };
         rooms.set(roomId, room);
-        send(res, 201, { roomId, teacherSecret, room: publicRoom(room, now()) }); return;
+        send(res, 201, { roomId, teacherSecret, room: publicRoom(room, now(), "teacher") }); return;
       } catch (error) {
         if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pedido inválido." });
         return;
       }
     }
-    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate))?$/);
+    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close))?$/);
     if (!matched) { send(res, 404, { error: "Endereço não encontrado." }); return; }
     const [, roomId, op] = matched;
     const room = rooms.get(roomId);
@@ -164,7 +166,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         if (!safeTokenMatch(input.secret, room.teacherHash)) {
           send(res, 403, { error: "Link de professor inválido ou revogado." }); return;
         }
-        send(res, 200, { role: "teacher", room: publicRoom(room, now()) }); return;
+        send(res, 200, { role: "teacher", room: publicRoom(room, now(), "teacher") }); return;
       } catch (error) {
         if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pedido inválido." });
         return;
@@ -174,7 +176,44 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     if (!access) { send(res, 403, { error: "Acesso não autorizado." }); return; }
     if (req.method === "GET" && op === "state") {
       if (access.participant) access.participant.lastSeen = now();
-      send(res, 200, { role: access.role, room: publicRoom(room, now()) }); return;
+      send(res, 200, { role: access.role, room: publicRoom(room, now(), access.role) }); return;
+    }
+    if (req.method === "POST" && ["quiz", "quiz-open", "quiz-close"].includes(op)) {
+      if (access.role !== "teacher") {
+        send(res, 403, { error: "Somente o professor pode controlar perguntas." }); return;
+      }
+      if (room.status !== "open") {
+        send(res, 409, { error: "A sala foi encerrada." }); return;
+      }
+      if (op === "quiz") {
+        if (room.quiz?.phase === "open") {
+          send(res, 409, { error: "Encerre a pergunta atual antes de criar outra." }); return;
+        }
+        try {
+          const input = await readJSON(req);
+          const draft = createQuizDraft(input);
+          if (draft.error) { send(res, 422, { error: draft.error }); return; }
+          room.quiz = draft.quiz;
+          send(res, 201, { quiz: quizForRole(room.quiz, "teacher") }); return;
+        } catch (error) {
+          if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pergunta inválida." });
+          return;
+        }
+      }
+      if (op === "quiz-open") {
+        if (!room.quiz || room.quiz.phase !== "draft") {
+          send(res, 409, { error: "Crie um rascunho antes de abrir a pergunta." }); return;
+        }
+        room.quiz.phase = "open";
+        room.quiz.version++;
+        send(res, 200, { quiz: quizForRole(room.quiz, "teacher") }); return;
+      }
+      if (!room.quiz || room.quiz.phase !== "open") {
+        send(res, 409, { error: "Não há uma pergunta aberta para encerrar." }); return;
+      }
+      room.quiz.phase = "closed";
+      room.quiz.version++;
+      send(res, 200, { quiz: quizForRole(room.quiz, "teacher") }); return;
     }
     if (req.method === "POST" && op === "leave") {
       if (access.role !== "student") { send(res, 403, { error: "Apenas alunos podem sair por este endpoint." }); return; }
@@ -184,7 +223,8 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     if (req.method === "POST" && op === "close") {
       if (access.role !== "teacher") { send(res, 403, { error: "Apenas o professor pode encerrar a sala." }); return; }
       room.status = "closed";
-      send(res, 200, { room: publicRoom(room, now()) }); return;
+      if (room.quiz?.phase === "open") room.quiz.phase = "closed";
+      send(res, 200, { room: publicRoom(room, now(), "teacher") }); return;
     }
     if (req.method === "POST" && op === "rotate") {
       if (access.role !== "teacher") { send(res, 403, { error: "Apenas o professor pode renovar o link." }); return; }
