@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createRoomId, inviteUrl, isRoomId, readRoomId, vdoUrl } from "../src/room.ts";
+import { createRoomId, inviteUrl, isRoomId, readRoomId, readTeacherSecret, teacherUrl, vdoUrl } from "../src/room.ts";
 
 test("gera código aleatório de sala com 30 caracteres", () => {
   const fakeCrypto = {
@@ -38,4 +38,17 @@ test("VDO.Ninja recebe sala e nome sem permitir injeção de parâmetros", () =>
   assert.equal(link.searchParams.get("label"), "João &room=outra");
   assert.equal(link.searchParams.has("showlabels"), true);
   assert.equal(link.searchParams.getAll("room").length, 1);
+});
+
+test("link de professor mantém segredo fora do convite dos alunos", () => {
+  const room = "aulas-000102030405060708090a0b";
+  const secret = "A".repeat(43);
+  const base = "https://pscfredteixeira.github.io/aulas/";
+  const student = inviteUrl(room, base + "?ignore=1#teacher=old");
+  const teacher = teacherUrl(room, secret, base);
+  assert.equal(new URL(student).hash, "");
+  assert.equal(new URL(student).searchParams.get("room"), room);
+  assert.equal(readTeacherSecret(new URL(teacher).hash), secret);
+  assert.equal(readTeacherSecret("#teacher=short"), null);
+  assert.throws(() => teacherUrl(room, "fraco", base));
 });
