@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/web/**"
+      - "apps/server/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
@@ -34,7 +35,11 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Testar
         run: npm run test
+      - name: Verificar permissoes no backend
+        run: npm run test --prefix ../server
       - name: Compilar site
+        env:
+          VITE_AULAS_API_URL: ${{ vars.AULAS_API_URL }}
         run: npm run build
       - name: Configurar Pages
         uses: actions/configure-pages@v5
