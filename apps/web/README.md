@@ -2,7 +2,7 @@
 
 Protótipo web de videoaula em React, TypeScript e Vite. Usa VDO.Ninja em iframe para conversas em grupo; não implementa quizzes ou autorização de professor.
 
-## Executar
+## Usar como professor ou aluno\n\nNão é necessário instalar nada: depois da publicação pelo GitHub Pages, basta abrir o link HTTPS da plataforma, criar ou entrar na sala, informar um nome e autorizar câmera/microfone. O Node.js fica exclusivamente no build do GitHub ou em servidores internos.\n\nConsulte [Sprint 2 — publicação](../../docs/SPRINT-2.md#publicação-online-sem-instalação).\n\n## Executar localmente (opcional, para desenvolvedores)
 
 ```bash
 npm install
