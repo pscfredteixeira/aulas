@@ -37,6 +37,12 @@ jobs:
         run: npm run test
       - name: Verificar permissoes no backend
         run: npm run test --prefix ../server
+      - name: Conferir API do professor (quando configurada)
+        if: ${{ vars.AULAS_API_URL != '' }}
+        env:
+          AULAS_API_URL: ${{ vars.AULAS_API_URL }}
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 --max-time 90 "${AULAS_API_URL%/}/api/health" | grep -q '"ok":true'
       - name: Compilar site
         env:
           VITE_AULAS_API_URL: ${{ vars.AULAS_API_URL }}
