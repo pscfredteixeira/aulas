@@ -1,4 +1,4 @@
-name: Verificação do frontend
+name: Verificação do Aulas
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  validate:
+  frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,7 +18,19 @@ jobs:
           node-version: "22"
       - name: Instalar dependências
         run: npm install --no-audit --no-fund
-      - name: Testes unitários
+      - name: Testes frontend
         run: npm run test
       - name: Build TypeScript e Vite
         run: npm run build
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Testes de permissões e salas
+        run: npm run test
