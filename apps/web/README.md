@@ -20,6 +20,12 @@ npm run build
 
 **Atenção:** esses comandos não comprovam que áudio e vídeo funcionam em múltiplos dispositivos. Consulte [o roteiro de teste](../../docs/SPRINT-2.md).
 
+## Quiz ao vivo (Sprint 4)
+
+Ao entrar com o link privado de professor, o painel ao lado da chamada permite criar uma pergunta de quatro alternativas, indicar o gabarito, salvar rascunho, abrir para os alunos e encerrar. A turma vê a pergunta poucos segundos depois, sem o gabarito. O iframe VDO.Ninja continua aberto durante as mudanças.
+
+O botão de responder e as contagens virão no Sprint 5. Veja [o roteiro de teste](../../docs/SPRINT-4.md).
+
 ## Privacidade
 
 - Nenhuma mídia é transmitida para o backend do Aulas, pois ainda não há backend.
