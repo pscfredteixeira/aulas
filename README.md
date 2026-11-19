@@ -2,9 +2,9 @@
 
 Plataforma web de **aulas ao vivo e interativas**: professor e alunos participam com câmera e microfone, enquanto o professor apresenta quizzes e outras atividades sem interromper a videochamada.
 
-> **Estado:** Sprint 2 — frontend de demonstração implementado, com integração inicial ao VDO.Ninja. **A chamada entre dois dispositivos ainda precisa ser testada.**  
+> **Estado:** Sprint 3 implementado no código, com interface audiovisual publicada. A ativação do controle de professor depende da hospedagem da API. O usuário relatou que a interface está funcionando; testes externos de carga e moderação seguem pendentes.  
 > **Regra permanente:** professores e alunos usam apenas o navegador — sem Node.js, terminal, extensões ou instalação de aplicativos. O acesso continua sem cadastro na primeira versão.
-> **Importante:** a prova de conceito do Sprint 2 não separa permissões de professor e aluno; isso será implementado com validação no servidor no Sprint 3.
+> **Importante:** as permissões de professor e aluno já são verificadas no backend, mas **não ficam ativas no GitHub Pages até configurar a API remota**. Sem essa API, a plataforma permanece em modo de teste audiovisual.
 
 ## Visão do produto
 
@@ -35,6 +35,7 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 - [Roadmap e sprints](docs/ROADMAP.md)
 - [Critérios de aceite do Sprint 1 e próximos testes](docs/TESTES.md)
 - [Sprint 2 — implementação, testes e publicação online](docs/SPRINT-2.md)
+- [Sprint 3 — sala protegida, implantação da API e limites](docs/SPRINT-3.md)
 - [Modelo inicial de uma aula em JSON](examples/aula.exemplo.json)
 
 ## Usar o Aulas sem instalar nada
@@ -56,7 +57,15 @@ npm install
 npm run dev
 ```
 
-O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo do Sprint 2 ainda não tem quiz, moderação ou acesso protegido**; não utilizá-lo com dados sensíveis.
+O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo ainda não tem quiz e o VDO.Ninja não é protegido pela API de salas**; não utilizá-lo com dados sensíveis.
+
+## Sprint 3 — Sala do professor e dos alunos
+
+O código do Sprint 3 já existe: professor cria uma sala com um link privado, alunos recebem outro link e o servidor verifica permissões para **renovar o link de professor** e **encerrar a aula no Aulas**. Esses comandos precisam de um serviço remoto.
+
+**Status no site público:** enquanto não houver `AULAS_API_URL` configurada e API HTTPS publicada, o Aulas continua em **modo de teste audiovisual** — sem link de professor protegido e sem moderação. É proposital: o vídeo que já funcionava não é interrompido.
+
+O backend está em [apps/server](apps/server/README.md). A implantação está explicada em [docs/SPRINT-3.md](docs/SPRINT-3.md). **Os professores e alunos não precisam instalar Node.js**, inclusive depois de habilitarmos o serviço remoto.
 
 ## Pilha técnica e arquitetura
 
