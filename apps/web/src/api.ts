@@ -1,3 +1,10 @@
+export class ApiRequestError extends Error {
+  constructor(message: string, public readonly status?: number) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
+
 export const API_BASE_URL = (import.meta.env.VITE_AULAS_API_URL || "").trim().replace(/\/+$/, "");
 
 export type QuizPhase = "draft" | "open" | "closed";
@@ -42,17 +49,23 @@ async function api<T>(path: string, method: "GET" | "POST", body?: object, token
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
   let response: Response;
+  // O Render gratuito pode precisar acordar após um período sem uso.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 70_000);
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method, headers, body: body ? JSON.stringify(body) : undefined,
-      cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer"
+      cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer",
+      signal: controller.signal
     });
   } catch {
-    throw new Error("Não foi possível conectar ao serviço de salas. Tente novamente.");
+    throw new ApiRequestError("Não foi possível conectar ao serviço de salas. Se ele estiver hibernando, tente novamente em alguns instantes.");
+  } finally {
+    clearTimeout(timeout);
   }
   const data = await response.json().catch(() => null) as Record<string, unknown> | null;
   if (!response.ok) {
-    throw new Error(typeof data?.error === "string" ? data.error : `Falha no serviço (${response.status}).`);
+    throw new ApiRequestError(typeof data?.error === "string" ? data.error : `Falha no serviço (${response.status}).`, response.status);
   }
   return data as T;
 }
