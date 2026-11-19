@@ -77,6 +77,17 @@ O código do Sprint 3 já existe: professor cria uma sala com um link privado, a
 
 O backend está em [apps/server](apps/server/README.md). A implantação está explicada em [docs/SPRINT-3.md](docs/SPRINT-3.md). **Os professores e alunos não precisam instalar Node.js**, inclusive depois de habilitarmos o serviço remoto.
 
+## Sprint 4 — Apresentação de perguntas
+
+Já é possível preparar uma pergunta com **quatro alternativas e gabarito**, salvar um rascunho, **abrir a atividade para os alunos** e encerrá-la, sem desmontar o vídeo VDO.Ninja. A pergunta é exibida ao lado da chamada, em uma área responsiva.
+
+**Importante:** o aluno ainda não envia a resposta pela plataforma. A votação, a contagem e os resultados serão implementados no Sprint 5.
+
+- [Como testar uma pergunta ao vivo](docs/SPRINT-4.md)
+- [Código do painel de quiz](apps/web/src/QuizPanel.tsx)
+
+As perguntas são temporárias: ficam apenas na memória do Render e podem desaparecer se o serviço reiniciar ou hibernar.
+
 ## Pilha técnica e arquitetura
 
 - **Frontend:** React + TypeScript + Vite (implementado no Sprint 2)
