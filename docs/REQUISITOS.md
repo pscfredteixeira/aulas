@@ -43,7 +43,9 @@ Identificadores: `RF` funcional, `RNF` não funcional. **MVP** é o primeiro pro
 - **RNF-07 Compatibilidade:** validar Chrome/Edge desktop, Safari iOS e Chrome Android; registrar limitações reais.
 - **RNF-08 Observabilidade:** logs técnicos sem códigos secretos, respostas individuais desnecessárias ou mídia.
 - **RNF-09 Evolução:** contratos versionados para os arquivos de aula; não acoplar estrutura ao Atelier.
-- **RNF-10 Desempenho:** meta inicial de teste com seis participantes, sem promessa de escala automática.\n- **RNF-11 Acesso sem instalação (obrigatório e permanente):** professores e alunos usam a plataforma no navegador moderno por HTTPS, sem instalar Node.js, extensões, programas ou executar comandos; concedem apenas permissões de câmera e microfone necessárias.\n- **RNF-12 Publicação contínua do frontend:** o GitHub Actions compila e publica o site estático no GitHub Pages após atualizações do código, sem intervenção dos usuários finais.
+- **RNF-10 Desempenho:** meta inicial de teste com seis participantes, sem promessa de escala automática.
+- **RNF-11 Acesso sem instalação (obrigatório e permanente):** professores e alunos usam a plataforma no navegador moderno por HTTPS, sem instalar Node.js, extensões, programas ou executar comandos; concedem apenas permissões de câmera e microfone necessárias.
+- **RNF-12 Publicação contínua do frontend:** o GitHub Actions compila e publica o site estático no GitHub Pages após atualizações do código, sem intervenção dos usuários finais.
 
 ## Decisões pendentes
 
