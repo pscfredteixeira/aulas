@@ -2,9 +2,9 @@
 
 Plataforma web de **aulas ao vivo e interativas**: professor e alunos participam com câmera e microfone, enquanto o professor apresenta quizzes e outras atividades sem interromper a videochamada.
 
-> **Estado:** Sprint 3 implementado no código, com interface audiovisual publicada. A ativação do controle de professor depende da hospedagem da API. O usuário relatou que a interface está funcionando; testes externos de carga e moderação seguem pendentes.  
+> **Estado:** Sprint 3 com servidor hospedado no Render e integração publicada pelo GitHub Actions. Verificação manual do uso de links de professor e aluno ainda pendente. O usuário relatou que a interface está funcionando; testes externos de carga e moderação seguem pendentes.  
 > **Regra permanente:** professores e alunos usam apenas o navegador — sem Node.js, terminal, extensões ou instalação de aplicativos. O acesso continua sem cadastro na primeira versão.
-> **Importante:** as permissões de professor e aluno já são verificadas no backend, mas **não ficam ativas no GitHub Pages até configurar a API remota**. Sem essa API, a plataforma permanece em modo de teste audiovisual.
+> **Importante:** as permissões de professor e aluno são verificadas no backend hospedado em https://aulas-api-vrdo.onrender.com. O GitHub Actions já compilou o site com a API, mas os fluxos devem ser verificados em navegadores reais.
 
 ## Visão do produto
 
@@ -61,11 +61,11 @@ O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O 
 
 ## Ativar a API sem instalar nada — preparação concluída
 
-O backend do Sprint 3 está pronto para **implantação de teste** pelo Render. O botão abaixo cria a configuração de hospedagem a partir do `render.yaml` do próprio repositório:
+O backend do Sprint 3 **foi implantado no Render** em https://aulas-api-vrdo.onrender.com e seu endpoint de saúde foi verificado pelo GitHub Actions. O botão abaixo cria a configuração de hospedagem a partir do `render.yaml` do próprio repositório:
 
 [![Implantar no Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/pscfredteixeira/aulas)
 
-**A implantação ainda exige que o proprietário do projeto autorize o Render e conecte o GitHub.** Depois, é necessário copiar a URL HTTPS fornecida pelo Render para a variável `AULAS_API_URL` no GitHub Actions e republicar o site. [Passo a passo (sem terminal)](docs/IMPLANTAR-API.md).
+**Implantação realizada.** O workflow já utiliza a URL do Render, com possibilidade de substituí-la posteriormente pela variável `AULAS_API_URL`. [Passo a passo (sem terminal)](docs/IMPLANTAR-API.md).
 
 O plano gratuito do Render pode hibernar e reiniciar a API, perdendo salas que ainda ficam em memória. Portanto, isto serve para testes: **não use este protótipo em aulas reais com dados sensíveis**.
 
@@ -73,7 +73,7 @@ O plano gratuito do Render pode hibernar e reiniciar a API, perdendo salas que a
 
 O código do Sprint 3 já existe: professor cria uma sala com um link privado, alunos recebem outro link e o servidor verifica permissões para **renovar o link de professor** e **encerrar a aula no Aulas**. Esses comandos precisam de um serviço remoto.
 
-**Status no site público:** enquanto não houver `AULAS_API_URL` configurada e API HTTPS publicada, o Aulas continua em **modo de teste audiovisual** — sem link de professor protegido e sem moderação. É proposital: o vídeo que já funcionava não é interrompido.
+**Status no site público:** a compilação publicada já aponta para a API hospedada. Falta testar no navegador se professor e alunos entram com os links corretos. A proteção de API **não** protege a entrada direta na sala do VDO.Ninja.
 
 O backend está em [apps/server](apps/server/README.md). A implantação está explicada em [docs/SPRINT-3.md](docs/SPRINT-3.md). **Os professores e alunos não precisam instalar Node.js**, inclusive depois de habilitarmos o serviço remoto.
 
