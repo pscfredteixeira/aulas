@@ -56,6 +56,16 @@ O GitHub Actions executa testes do frontend e do backend, valida a saúde da API
 - O link administrativo do Aulas **não protege a sala audiovisual do VDO.Ninja** de acesso direto. A publicação atual é experimental, não apropriada para dados clínicos ou de alunos sensíveis.
 - A reprodução audiovisual depende das permissões de câmera e microfone e dos recursos do VDO.Ninja.
 
+## Diagnóstico do link de aluno — 19/11/2026
+
+O usuário relatou convites que não funcionavam. A API pública `https://aulas-api-vrdo.onrender.com` passou no novo **teste completo de criação → ingresso de aluno → leitura da sala → encerramento** executado em [GitHub Actions](https://github.com/pscfredteixeira/aulas/actions/runs/44613314114). O teste **não garante** que um link antigo ainda seja válido ou que o iframe VDO.Ninja funcione em um aparelho real.
+
+Foram implementadas melhorias: aviso específico de sala desaparecida após reinício do Render, orientação clara para quem chega pelo convite, espera adicional para servidor gratuito acordar e acesso alternativo direto ao VDO.Ninja **somente para vídeo**, sem quiz.
+
+**Causas possíveis não totalmente eliminadas:** salas e quizzes ainda ficam em memória e somem após deploy/hibernação do Render. Além disso, o repositório continua executando um workflow antigo de Pages com Jekyll; o responsável precisa conferir em [Settings → Pages](https://github.com/pscfredteixeira/aulas/settings/pages) se `Source = GitHub Actions`, para impedir que a publicação antiga substitua a aplicação.
+
+Para retestar, **criar uma sala nova após os deployments** e compartilhar o convite novo. Caso o aluno receba 404, a página agora oferece modo apenas vídeo com aviso, mas **isso não restaura o quiz nem a sala administrativa**. Dados duráveis são uma pendência obrigatória antes do uso em produção. [Issue com investigação e pendências](https://github.com/pscfredteixeira/aulas/issues/4).
+
 ## Próximo sprint — respostas
 
 O Sprint 5 implementará a votação individual, recebimento pelo servidor, prevenção de voto duplicado, contagem do professor, encerramento, revelação de gabarito e reconexão. Para isso será necessário um contrato de eventos em tempo real ou outra estratégia confiável de sincronização; o polling do Sprint 4 é provisório.
