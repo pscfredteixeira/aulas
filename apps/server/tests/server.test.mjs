@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createAulasServer } from "../src/server.mjs";
+import { serializeRoom, reviveRoom } from "../src/firestore-store.mjs";
 
 async function start() {
   const server = createAulasServer({ allowedOrigins: ["http://localhost:5173"] });
@@ -174,4 +175,67 @@ test("Sprint 4: rascunho exige quatro opções, gabarito válido e limites de te
   assert.equal((await request(base, "POST", path, { ...good, prompt: "<script>alert(1)</script>" }, created.data.teacherSecret)).code, 422);
   assert.equal((await request(base, "POST", path, { ...good, options: ["Uma", "Duas", "<b>Teste</b>", "Quatro"] }, created.data.teacherSecret)).code, 422);
   assert.equal((await request(base, "POST", path, good, created.data.teacherSecret)).code, 201);
+});
+
+test("Firebase: sala, credenciais e pergunta sobrevivem ao reinício do servidor", async () => {
+  // Fake de armazenamento para testar recuperação sem usar credenciais reais.
+  const documents = new Map();
+  const store = {
+    async get(id) {
+      const raw = documents.get(id);
+      return raw ? reviveRoom(structuredClone(raw)) : null;
+    },
+    async save(room) {
+      documents.set(room.id, structuredClone(serializeRoom(room)));
+    },
+    async delete(id) { documents.delete(id); },
+    async cleanupExpired() {}
+  };
+  const launch = async () => {
+    const server = createAulasServer({ allowedOrigins: ["http://localhost:5173"], store });
+    await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+    return { server, base: `http://127.0.0.1:${server.address().port}` };
+  };
+
+  const first = await launch();
+  const created = await request(first.base, "POST", "/api/rooms", { name: "Professora" });
+  assert.equal(created.code, 201);
+  assert.equal((await request(first.base, "GET", "/api/health")).data.persistent, true);
+  const { roomId, teacherSecret } = created.data;
+  const joined = await request(first.base, "POST", `/api/rooms/${roomId}/join`, { name: "Aluna" });
+  assert.equal(joined.code, 201);
+  const token = joined.data.participantToken;
+
+  const quiz = {
+    prompt: "Qual conceito Freud associou ao trabalho dos sonhos?",
+    options: ["Condensação", "Fotossíntese", "Fermentação", "Homeostase"],
+    correctOptionId: "A"
+  };
+  assert.equal((await request(first.base, "POST", `/api/rooms/${roomId}/quiz`, quiz, teacherSecret)).code, 201);
+  assert.equal((await request(first.base, "POST", `/api/rooms/${roomId}/quiz-open`, {}, teacherSecret)).code, 200);
+  const stored = documents.get(roomId);
+  assert.match(stored.teacherHash, /^[a-f0-9]{64}$/);
+  assert.equal(JSON.stringify(stored).includes(teacherSecret), false);
+  assert.equal(JSON.stringify(stored).includes(token), false);
+  await new Promise(resolve => first.server.close(resolve));
+
+  const second = await launch();
+  try {
+    const teacher = await request(second.base, "POST", `/api/rooms/${roomId}/teacher`, { secret: teacherSecret });
+    assert.equal(teacher.code, 200, "link privado do professor deve continuar válido");
+    const student = await request(second.base, "GET", `/api/rooms/${roomId}/state`, undefined, token);
+    assert.equal(student.code, 200, "token do aluno deve funcionar depois do reinício");
+    assert.equal(student.data.role, "student");
+    assert.equal(student.data.room.quiz.prompt, quiz.prompt);
+    assert.equal("correctOptionId" in student.data.room.quiz, false);
+    assert.equal((await request(second.base, "POST", `/api/rooms/${roomId}/quiz-close`, {}, teacherSecret)).code, 200);
+    assert.equal(documents.get(roomId).quiz.phase, "closed");
+    const rotated = await request(second.base, "POST", `/api/rooms/${roomId}/rotate`, {}, teacherSecret);
+    assert.equal(rotated.code, 200);
+    assert.equal((await request(second.base, "POST", `/api/rooms/${roomId}/teacher`, { secret: teacherSecret })).code, 403);
+    assert.equal((await request(second.base, "POST", `/api/rooms/${roomId}/close`, {}, rotated.data.teacherSecret)).code, 200);
+    assert.equal(documents.get(roomId).status, "closed");
+  } finally {
+    await new Promise(resolve => second.server.close(resolve));
+  }
 });
