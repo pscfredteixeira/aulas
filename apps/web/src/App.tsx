@@ -96,7 +96,8 @@ export default function App() {
       }
     }
     void sync();
-    // Sprint 4: atualização a cada 3 s; eventos instantâneos ficam para o Sprint 5.
+    // Sprint 5 (MVP): contagem com atualização aproximada a cada 3 s;
+    // notificações instantâneas por WebSocket ainda são evolução futura.
     const timer = window.setInterval(() => { void sync(); }, 3000);
     return () => { active = false; clearInterval(timer); };
   }, [joined, hasServer, authToken, hasValidRoom, room]);
@@ -181,10 +182,45 @@ export default function App() {
           setRole("teacher");
           setSnapshot(data.room);
         } else {
-          const data = await joinProtectedRoom(room, name.trim());
-          setAuthToken(data.participantToken);
-          setRole("student");
-          setSnapshot(data.room);
+          // Recarregar a página não deve criar uma segunda participação (nem permitir
+          // votar duas vezes com o mesmo navegador). O token fica só nesta aba.
+          const storageKey = `aulas:participante:${room}`;
+          let reused = false;
+          try {
+            const saved = JSON.parse(window.sessionStorage.getItem(storageKey) || "null") as {
+              token?: string; name?: string
+            } | null;
+            if (saved?.token && saved.name === name.trim()) {
+              try {
+                const restored = await fetchRoomState(room, saved.token);
+                if (restored.role === "student" && restored.room.status === "open") {
+                  setAuthToken(saved.token);
+                  setRole("student");
+                  setSnapshot(restored.room);
+                  reused = true;
+                }
+              } catch (error) {
+                // Revogado ou expirado: entrar novamente. Falhas de rede não devem
+                // criar um segundo aluno durante uma tentativa de reconexão.
+                if (!(error instanceof ApiRequestError) || ![403, 404].includes(error.status ?? 0)) throw error;
+                window.sessionStorage.removeItem(storageKey);
+              }
+            }
+          } catch (error) {
+            if (error instanceof ApiRequestError) throw error;
+            // Bloqueio do sessionStorage: a entrada pelo navegador ainda funciona.
+          }
+          if (!reused) {
+            const data = await joinProtectedRoom(room, name.trim());
+            setAuthToken(data.participantToken);
+            setRole("student");
+            setSnapshot(data.room);
+            try {
+              window.sessionStorage.setItem(storageKey, JSON.stringify({
+                name: name.trim(), token: data.participantToken
+              }));
+            } catch { /* Armazenamento local opcional. */ }
+          }
         }
       } else {
         setRole("demo");
@@ -222,6 +258,8 @@ export default function App() {
 
   function leaveRoom() {
     if (hasServer && role === "student" && authToken) {
+      try { window.sessionStorage.removeItem(`aulas:participante:${room}`); }
+      catch { /* Armazenamento local opcional. */ }
       void leaveProtectedRoom(room, authToken).catch(() => { /* O prazo de presença expira sozinho. */ });
       setAuthToken("");
       setRole(null);
