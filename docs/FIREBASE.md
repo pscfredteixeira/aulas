@@ -1,6 +1,6 @@
 # Firebase no Aulas — persistência das salas
 
-**Estado (19/11/2026):** adaptador do **Cloud Firestore** desenvolvido, testes de restauração após reinício aprovados. **A conexão externa ainda não está ativada:** é necessário criar/selecionar um projeto Firebase e configurar uma credencial privada no Render. Enquanto isso, a API mantém o comportamento anterior em memória.
+**Estado (20/11/2026):** **Cloud Firestore ativo no Render**. O usuário configurou a conta de serviço diretamente nas variáveis privadas, sem compartilhar a chave aqui; o Render confirmou `Firestore ativado para persistência de salas.` e a API passou no teste público de criação, votos e leitura de resultados. Teste externo de reinício durante uma aula real ainda pendente.
 
 ## Arquitetura
 
@@ -11,7 +11,7 @@
 
 **Não é necessário instalar nenhum programa** para professor ou aluno, nem criar conta no Firebase para eles. Somente a API fala com o Firestore. Não colocar o SDK Admin no frontend.
 
-## Ativar pela interface do navegador
+## Como reconfigurar ou migrar no futuro (já realizado)
 
 1. Abra https://console.firebase.google.com/ e escolha **Criar projeto** ou um projeto já seu. Comece pelo plano **Spark (sem custo)**, sem aceitar upgrade de cobrança.
 2. No projeto, vá a **Build → Firestore Database → Create database**. Para este projeto, use **Standard edition**. Defina uma localização adequada e **regras fechadas para acesso direto de clientes**. O Admin SDK no servidor utiliza credenciais IAM, não as regras do frontend.
@@ -25,7 +25,7 @@
 
 A credencial de conta de serviço possui privilégios elevados. Não copie o arquivo para o repositório, não o envie a outras pessoas, nem inclua seu conteúdo em perguntas de suporte. Idealmente, com a arquitetura madura, substituiríamos a chave estática por identidade federada entre Render e Google Cloud.
 
-O Firestore guarda somente **hashes SHA-256** de segredos administrativos e de aluno, não os tokens em texto puro. Os registros são excluídos quando expiram e são acessados; a limpeza também roda periodicamente. Não utilizar para informações clínicas, diagnósticos, prontuários ou aulas com dados pessoais sensíveis. O acesso direto à sala VDO.Ninja não está protegido pelas permissões do Aulas.
+O Firestore guarda **hashes SHA-256** dos segredos administrativos e de aluno, nunca os tokens em texto puro. O registro de cada voto usa o ID efêmero da participação, não o nome pessoal do aluno. Os registros são excluídos quando expiram e são acessados; a limpeza também roda periodicamente. Não utilizar para informações clínicas, diagnósticos, prontuários ou aulas com dados pessoais sensíveis. O acesso direto à sala VDO.Ninja não está protegido pelas permissões do Aulas.
 
 ### Custos e limites
 
@@ -39,7 +39,7 @@ Um PostgreSQL de teste no plano Free foi criado durante a análise anterior, mas
 
 ## Verificação automatizada
 
-`apps/server/tests/server.test.mjs` testa um armazenamento simulado que preserva a sala, o token de aluno e o quiz depois de recriar o servidor; isso cobre o caminho de recuperação no código, **não substitui o teste real com credenciais Firebase configuradas**.
+`apps/server/tests/server.test.mjs` testa um armazenamento simulado que preserva a sala, o token de aluno e o quiz depois de recriar o servidor; isso cobre o caminho de recuperação no código, foi complementado por um teste automatizado contra a API pública com Firestore ativo, que criou sala, registrou dois votos, apurou e revelou resultados. **Ainda é necessário verificar uma aula e um reinício real em dois dispositivos.**
 
 ## Documentação de referência
 
