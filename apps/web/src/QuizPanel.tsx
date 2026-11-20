@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { closeQuiz, openQuiz, saveQuizDraft } from "./api";
-import type { Quiz, QuizDraftInput } from "./api";
+import { closeQuiz, openQuiz, revealQuizResults, saveQuizDraft, submitQuizAnswer } from "./api";
+import type { Quiz, QuizDraftInput, QuizOptionId } from "./api";
 
-const LETTERS = ["A", "B", "C", "D"] as const;
+const LETTERS: QuizOptionId[] = ["A", "B", "C", "D"];
 
 type Props = {
   roomId: string;
@@ -16,12 +16,27 @@ type Props = {
 export default function QuizPanel({ roomId, token, role, quiz, onUpdated }: Props) {
   const [prompt, setPrompt] = useState("");
   const [options, setOptions] = useState<string[]>(["", "", "", ""]);
-  const [correctOptionId, setCorrectOptionId] = useState<QuizDraftInput["correctOptionId"]>("A");
+  const [correctOptionId, setCorrectOptionId] = useState<QuizOptionId>("A");
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [message, setMessage] = useState("");
 
+  const isTeacher = role === "teacher";
+  const canEdit = isTeacher && quiz?.phase !== "open";
+  const studentCanAnswer = !isTeacher && quiz?.phase === "open" && !quiz.myAnswer;
+
+  useEffect(() => {
+    setErrorMessage("");
+    setMessage("");
+    if (isTeacher && quiz?.phase === "draft") {
+      setPrompt(quiz.prompt);
+      setOptions(quiz.options.map(option => option.text));
+      setCorrectOptionId(quiz.correctOptionId ?? "A");
+    }
+  }, [isTeacher, quiz?.id]);
+
   async function perform(action: () => Promise<{ quiz: Quiz }>, success: string) {
+    if (busy) return;
     setBusy(true);
     setErrorMessage("");
     setMessage("");
@@ -38,35 +53,37 @@ export default function QuizPanel({ roomId, token, role, quiz, onUpdated }: Prop
 
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (quiz?.phase === "open" || busy) return;
+    if (!canEdit || busy) return;
     void perform(
-      () => saveQuizDraft(roomId, token, { prompt: prompt.trim(), options: options.map(v => v.trim()), correctOptionId }),
-      "Rascunho salvo. Abra a pergunta para mostrá-la à turma."
+      () => saveQuizDraft(roomId, token, {
+        prompt: prompt.trim(), options: options.map(value => value.trim()), correctOptionId
+      }),
+      "Rascunho salvo. Você pode abrir a pergunta quando quiser."
     );
   }
 
-  const isTeacher = role === "teacher";
-  const canEdit = isTeacher && quiz?.phase !== "open";
+  function submitAnswer(optionId: QuizOptionId) {
+    if (!quiz || !studentCanAnswer || busy) return;
+    void perform(
+      () => submitQuizAnswer(roomId, token, quiz.id, optionId),
+      "Resposta registrada! Aguarde o professor encerrar a votação."
+    );
+  }
 
-  useEffect(() => {
-    if (isTeacher && quiz?.phase === "draft") {
-      setPrompt(quiz.prompt);
-      setOptions(quiz.options.map(option => option.text));
-      setCorrectOptionId(quiz.correctOptionId ?? "A");
-    }
-  }, [isTeacher, quiz?.id]);
+  const showResults = Boolean(quiz?.results && (isTeacher || quiz.revealed));
+  const totalVotes = quiz?.results?.total ?? 0;
 
   return (
     <aside className="quiz-panel" aria-label={isTeacher ? "Atividade do professor" : "Atividade da aula"}>
       <div className="quiz-panel-title">
         <div>
-          <span className="eyebrow">Atividades ao vivo</span>
+          <span className="eyebrow">Interação com a turma</span>
           <h2>Quiz da aula</h2>
         </div>
         <span className={"quiz-badge quiz-badge--" + (quiz?.phase ?? "waiting")}>
           {quiz?.phase === "draft" ? "Rascunho" :
-            quiz?.phase === "open" ? "Na tela da turma" :
-              quiz?.phase === "closed" ? "Encerrado" : "Aguardando"}
+            quiz?.phase === "open" ? "Recebendo respostas" :
+              quiz?.phase === "closed" ? "Votação encerrada" : "Aguardando"}
         </span>
       </div>
 
@@ -74,57 +91,123 @@ export default function QuizPanel({ roomId, token, role, quiz, onUpdated }: Prop
         <div className="quiz-empty" role="status">
           <span className="quiz-empty-icon" aria-hidden="true">?</span>
           <h3>Aguardando uma pergunta</h3>
-          <p>Quando o professor abrir uma atividade, ela aparecerá aqui sem interromper a chamada.</p>
+          <p>Quando o professor abrir uma atividade, ela aparecerá aqui sem interromper sua chamada.</p>
         </div>
       )}
 
       {quiz && (
-        <div className="quiz-question" aria-live="polite" key={quiz.id}>
+        <div className="quiz-question" key={quiz.id}>
           <p className="quiz-question-kicker">
             {quiz.phase === "draft" ? "Prévia do professor" :
-              quiz.phase === "open" ? "Pergunta em andamento" : "Pergunta encerrada"}
+              quiz.phase === "open" ? "Pergunta em andamento" :
+                quiz.revealed ? "Resultado da turma" : "Pergunta encerrada"}
           </p>
           <h3>{quiz.prompt}</h3>
+          {!isTeacher && quiz.phase === "open" && !quiz.myAnswer && (
+            <p className="quiz-info">Selecione uma alternativa. Você pode responder uma vez por participação.</p>
+          )}
           <ol className="quiz-options">
-            {quiz.options.map(option => (
-              <li key={option.id} className={isTeacher && option.id === quiz.correctOptionId ? "quiz-option quiz-option--correct" : "quiz-option"}>
-                <span className="quiz-option-letter">{option.id}</span>
-                <span>{option.text}</span>
-                {isTeacher && option.id === quiz.correctOptionId && <span className="quiz-correct-label">Gabarito</span>}
-              </li>
-            ))}
+            {quiz.options.map(option => {
+              const selected = !isTeacher && quiz.myAnswer === option.id;
+              const correct = (isTeacher || quiz.revealed) && option.id === quiz.correctOptionId;
+              const className = "quiz-option" +
+                (correct ? " quiz-option--correct" : "") +
+                (selected ? " quiz-option--selected" : "");
+              const content = (
+                <>
+                  <span className="quiz-option-letter">{option.id}</span>
+                  <span className="quiz-option-text">{option.text}</span>
+                  {correct && <span className="quiz-correct-label">Correta</span>}
+                  {selected && <span className="quiz-selected-label">Sua resposta</span>}
+                </>
+              );
+              return (
+                <li key={option.id}>
+                  {studentCanAnswer ? (
+                    <button type="button" className={className + " quiz-answer-button"}
+                      disabled={busy} onClick={() => submitAnswer(option.id)}
+                      aria-label={`Responder alternativa ${option.id}: ${option.text}`}>
+                      {content}
+                    </button>
+                  ) : (
+                    <div className={className}>{content}</div>
+                  )}
+                </li>
+              );
+            })}
           </ol>
-          {!isTeacher && <p className="quiz-info">
-            {quiz.phase === "open"
-              ? "A pergunta está sendo apresentada. A opção de responder pela plataforma será ativada no próximo sprint."
-              : "O professor encerrou esta pergunta. Aguarde a próxima atividade."}
-          </p>}
+          {!isTeacher && quiz.myAnswer && (
+            <p className="quiz-answer-confirmation" role="status">
+              Você respondeu <strong>{quiz.myAnswer}</strong>.
+              {quiz.phase === "open" ? " Sua resposta foi registrada." :
+                quiz.revealed ? " Confira o resultado abaixo." : " Aguarde a divulgação do resultado."}
+            </p>
+          )}
+          {!isTeacher && quiz.phase === "closed" && !quiz.revealed && (
+            <p className="quiz-info" role="status">
+              A votação terminou. O professor decidirá quando mostrar o resultado.
+            </p>
+          )}
+          {showResults && quiz.results && (
+            <section className="quiz-results" aria-label="Resultado da votação" aria-live="polite">
+              <h4>{isTeacher ? "Respostas da turma" : "Resultado da turma"}</h4>
+              <p><strong>{totalVotes}</strong> {totalVotes === 1 ? "resposta registrada" : "respostas registradas"}</p>
+              {LETTERS.map(letter => {
+                const count = quiz.results?.counts[letter] ?? 0;
+                const percent = totalVotes ? Math.round(count / totalVotes * 100) : 0;
+                return (
+                  <div className="quiz-result-row" key={letter}>
+                    <div className="quiz-result-label"><strong>{letter}</strong><span>{count} · {percent}%</span></div>
+                    <div className="quiz-result-track">
+                      <div className="quiz-result-fill" style={{ width: `${percent}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+          {!isTeacher && quiz.phase === "open" && !quiz.myAnswer && (
+            <p className="quiz-info">A pergunta ficará aberta até o professor encerrar.</p>
+          )}
         </div>
       )}
 
       {isTeacher && quiz?.phase === "draft" && (
         <div className="quiz-controls">
-          <p className="quiz-info">O rascunho só está visível para você. Ao abrir, os alunos verão a pergunta, mas não o gabarito.</p>
+          <p className="quiz-info">O rascunho só aparece para você. O gabarito continuará oculto até a divulgação.</p>
           <button className="button button-primary" type="button" disabled={busy}
-            onClick={() => void perform(() => openQuiz(roomId, token), "Pergunta aberta para a turma.")}>
-            Abrir pergunta para os alunos
+            onClick={() => void perform(() => openQuiz(roomId, token), "Pergunta aberta! Os alunos já podem responder.")}>
+            Abrir votação para os alunos
           </button>
         </div>
       )}
       {isTeacher && quiz?.phase === "open" && (
         <div className="quiz-controls">
-          <p className="quiz-info">A pergunta aparece aos alunos em poucos segundos. Câmeras e áudio continuam na mesma chamada.</p>
+          <p className="quiz-info">As respostas são atualizadas aproximadamente a cada 3 segundos, sem interromper as câmeras.</p>
           <button className="button button-outline" type="button" disabled={busy}
-            onClick={() => void perform(() => closeQuiz(roomId, token), "Pergunta encerrada para a turma.")}>
-            Encerrar pergunta
+            onClick={() => void perform(() => closeQuiz(roomId, token), "Votação encerrada. Você pode divulgar o resultado.")}>
+            Encerrar votação
           </button>
         </div>
+      )}
+      {isTeacher && quiz?.phase === "closed" && !quiz.revealed && (
+        <div className="quiz-controls">
+          <p className="quiz-info">Só você vê o resultado neste momento. Clique abaixo para mostrá-lo à turma.</p>
+          <button className="button button-primary" type="button" disabled={busy}
+            onClick={() => void perform(() => revealQuizResults(roomId, token), "Resultado e gabarito divulgados à turma.")}>
+            Mostrar resultado e gabarito
+          </button>
+        </div>
+      )}
+      {isTeacher && quiz?.phase === "closed" && quiz.revealed && (
+        <p className="quiz-answer-confirmation" role="status">Resultado e gabarito já foram enviados aos alunos.</p>
       )}
 
       {canEdit && (
         <form className="quiz-editor" onSubmit={save}>
           {quiz?.phase === "closed" && <div className="quiz-divider" />}
-          <h3>{quiz?.phase === "closed" ? "Criar próxima pergunta" : quiz?.phase === "draft" ? "Editar rascunho" : "Criar uma pergunta"}</h3>
+          <h3>{quiz?.phase === "closed" ? "Criar próxima pergunta" :
+            quiz?.phase === "draft" ? "Editar rascunho" : "Criar uma pergunta"}</h3>
           <label htmlFor="quiz-prompt">Enunciado</label>
           <textarea id="quiz-prompt" rows={3} minLength={10} maxLength={400} required
             value={prompt} placeholder="Escreva a pergunta para seus alunos..."
@@ -142,7 +225,7 @@ export default function QuizPanel({ roomId, token, role, quiz, onUpdated }: Prop
                 }} />
             </div>
           ))}
-          <label htmlFor="quiz-correct">Resposta correta (visível apenas ao professor)</label>
+          <label htmlFor="quiz-correct">Resposta correta (reservada ao professor)</label>
           <select id="quiz-correct" value={correctOptionId} disabled={busy}
             onChange={event => setCorrectOptionId(event.target.value as QuizDraftInput["correctOptionId"])}>
             {LETTERS.map(letter => <option value={letter} key={letter}>Alternativa {letter}</option>)}
@@ -150,7 +233,7 @@ export default function QuizPanel({ roomId, token, role, quiz, onUpdated }: Prop
           <button className="button button-primary quiz-save" type="submit" disabled={busy}>
             {busy ? "Salvando…" : "Salvar rascunho"}
           </button>
-          <p className="quiz-info">Uma pergunta por vez. O próximo passo será permitir que cada aluno envie sua resposta.</p>
+          <p className="quiz-info">Uma pergunta por vez. Cada aluno pode registrar uma resposta por participação.</p>
         </form>
       )}
 
