@@ -1,34 +1,29 @@
-# Aulas · Frontend — Sprint 2
+# Aulas — Frontend React/Vite (Sprint 5)
 
-Protótipo web de videoaula em React, TypeScript e Vite. Usa VDO.Ninja em iframe para conversas em grupo; não implementa quizzes ou autorização de professor.
+A plataforma de videoaulas funciona no navegador sem conta ou instalação. O GitHub Pages publica o frontend; o **VDO.Ninja** transmite vídeo/áudio e a **API hospedada no Render** sincroniza salas, questões e votos pelo **Firebase Firestore**.
 
-## Usar como professor ou aluno\n\nNão é necessário instalar nada: depois da publicação pelo GitHub Pages, basta abrir o link HTTPS da plataforma, criar ou entrar na sala, informar um nome e autorizar câmera/microfone. O Node.js fica exclusivamente no build do GitHub ou em servidores internos.\n\nConsulte [Sprint 2 — publicação](../../docs/SPRINT-2.md#publicação-online-sem-instalação).\n\n## Executar localmente (opcional, para desenvolvedores)
+## Como participar
+
+**Professor:** abrir https://pscfredteixeira.github.io/aulas/, digitar nome e criar uma sala. A plataforma gera **link privado do professor** (administração) e **convite de alunos** (sem segredos). Guardar o primeiro; compartilhar somente o segundo. O professor prepara questão de quatro alternativas, abre a votação, acompanha contagem, encerra e decide quando revelar gabarito.
+
+**Aluno:** clicar no convite, digitar nome, clicar em **Entrar na videoaula** e autorizar câmera/microfone. Quando surgir uma pergunta ao lado da chamada, clicar em uma alternativa. A resposta é registrada uma vez por token de participação; o resultado aparece quando o professor o revelar.
+
+As alterações chegam com consultas de estado a cada **aproximadamente 3 segundos**. WebSocket ainda não foi implementado. Recarregar a mesma aba tenta reutilizar o token anterior; sair explicitamente encerra a participação.
+
+## Desenvolvimento local opcional
 
 ```bash
+cd apps/web
 npm install
+npm run test
+npm run build
 npm run dev
 ```
 
-Abra `http://localhost:5173` no computador. Para uso em outro aparelho, hospede em HTTPS. O VDO.Ninja usa infraestrutura externa para estabelecer as chamadas.
+Somente desenvolvedores precisam instalar Node.js. O frontend utiliza `VITE_AULAS_API_URL` como origem da API (definida no workflow do Pages). Câmera/microfone exigem HTTPS ou localhost; a chamada é estabelecida pelo serviço externo VDO.Ninja.
 
-## Verificar
+## Privacidade e limites
 
-```bash
-npm run test
-npm run build
-```
+O backend recebe nomes de exibição, identificadores efêmeros e votos, **não recebe os streams de áudio/vídeo**. O Firebase Admin SDK e sua credencial ficam somente no Render. A API não garante um voto por pessoa: um aluno pode criar outra participação em novo navegador. **Não usar como avaliação formal ou com dados clínicos/sensíveis.** Os controles administrativos não bloqueiam acesso direto ao VDO.Ninja por quem conhece o código da chamada.
 
-**Atenção:** esses comandos não comprovam que áudio e vídeo funcionam em múltiplos dispositivos. Consulte [o roteiro de teste](../../docs/SPRINT-2.md).
-
-## Quiz ao vivo (Sprint 4)
-
-Ao entrar com o link privado de professor, o painel ao lado da chamada permite criar uma pergunta de quatro alternativas, indicar o gabarito, salvar rascunho, abrir para os alunos e encerrar. A turma vê a pergunta poucos segundos depois, sem o gabarito. O iframe VDO.Ninja continua aberto durante as mudanças.
-
-O botão de responder e as contagens virão no Sprint 5. Veja [o roteiro de teste](../../docs/SPRINT-4.md).
-
-## Privacidade
-
-- Nenhuma mídia é transmitida para o backend do Aulas, pois ainda não há backend.
-- O vídeo/áudio é operado pelo VDO.Ninja; leia a política e documentação do serviço antes de usar com turmas reais.
-- Códigos de sala **não** são senhas; não há moderação ou autenticação nesta versão.
-- Esta versão não é indicada para discussões confidenciais ou coleta de dados sensíveis.
+[Documentação e testes do Sprint 5](../../docs/SPRINT-5.md).
