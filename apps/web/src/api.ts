@@ -8,21 +8,31 @@ export class ApiRequestError extends Error {
 export const API_BASE_URL = (import.meta.env.VITE_AULAS_API_URL || "").trim().replace(/\/+$/, "");
 
 export type QuizPhase = "draft" | "open" | "closed";
+export type QuizOptionId = "A" | "B" | "C" | "D";
+export type QuizResults = {
+  total: number;
+  counts: Record<QuizOptionId, number>;
+};
 
 export type Quiz = {
   id: string;
   prompt: string;
-  options: { id: "A" | "B" | "C" | "D"; text: string }[];
+  options: { id: QuizOptionId; text: string }[];
   phase: QuizPhase;
   version: number;
-  // Somente professores recebem essa propriedade pela API.
-  correctOptionId?: "A" | "B" | "C" | "D";
+  revealed: boolean;
+  // O servidor fornece resultados ao professor e aos alunos somente após a revelação.
+  results?: QuizResults;
+  // A resposta correta só chega ao aluno depois que o professor revela os resultados.
+  correctOptionId?: QuizOptionId;
+  // A resposta individual é visível somente para o próprio aluno.
+  myAnswer?: QuizOptionId | null;
 };
 
 export type QuizDraftInput = {
   prompt: string;
   options: string[];
-  correctOptionId: "A" | "B" | "C" | "D";
+  correctOptionId: QuizOptionId;
 };
 
 export type RoomSnapshot = {
@@ -102,4 +112,11 @@ export function openQuiz(roomId: string, token: string) {
 }
 export function closeQuiz(roomId: string, token: string) {
   return api<{ quiz: Quiz }>(`/api/rooms/${roomId}/quiz-close`, "POST", {}, token);
+}
+
+export function submitQuizAnswer(roomId: string, studentToken: string, quizId: string, optionId: QuizOptionId) {
+  return api<{ quiz: Quiz }>(`/api/rooms/${roomId}/quiz-answer`, "POST", { quizId, optionId }, studentToken);
+}
+export function revealQuizResults(roomId: string, teacherToken: string) {
+  return api<{ quiz: Quiz }>(`/api/rooms/${roomId}/quiz-reveal`, "POST", {}, teacherToken);
 }
