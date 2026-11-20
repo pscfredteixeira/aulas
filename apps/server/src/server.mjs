@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { createQuizDraft, quizForRole } from "./quiz.mjs";
+import { createQuizDraft, quizForRole, OPTION_IDS } from "./quiz.mjs";
 
 const ROOM_RE = /^aulas-[0-9a-f]{24}$/;
 const MAX_PARTICIPANTS = 30;
@@ -61,13 +61,13 @@ function readJSON(req) {
     req.on("error", reject);
   });
 }
-function publicRoom(room, now, role = "student") {
+function publicRoom(room, now, role = "student", participantId = null) {
   return {
     roomId: room.id,
     status: room.status,
     expiresAt: new Date(room.expiresAt).toISOString(),
     teacher: room.teacherName,
-    quiz: quizForRole(room.quiz, role),
+    quiz: quizForRole(room.quiz, role, participantId),
     participants: [...room.participants.values()]
       .filter(p => now - p.lastSeen < ACTIVE_MS)
       .map(p => ({ id: p.id, name: p.name }))
@@ -85,6 +85,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
   const origins = new Set(allowedOrigins);
   // Serialize writes per room; avoid an older async write overwriting a newer state.
   const writes = new Map();
+  const votesInFlight = new Set();
   async function persist(room) {
     if (!store) return;
     const previous = writes.get(room.id) ?? Promise.resolve();
@@ -150,7 +151,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         return;
       }
     }
-    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close))?$/);
+    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close|quiz-answer|quiz-reveal))?$/);
     if (!matched) { send(res, 404, { error: "Endereço não encontrado." }); return; }
     const [, roomId, op] = matched;
     let room = rooms.get(roomId);
@@ -179,7 +180,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         const participantToken = randomToken();
         room.participants.set(participantId, { id: participantId, name, hash: digest(participantToken), lastSeen: now() });
         await persist(room);
-        send(res, 201, { participantId, participantToken, room: publicRoom(room, now()) }); return;
+        send(res, 201, { participantId, participantToken, room: publicRoom(room, now(), "student", participantId) }); return;
       } catch (error) {
         if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pedido inválido." });
         return;
@@ -201,7 +202,74 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     if (!access) { send(res, 403, { error: "Acesso não autorizado." }); return; }
     if (req.method === "GET" && op === "state") {
       if (access.participant) access.participant.lastSeen = now();
-      send(res, 200, { role: access.role, room: publicRoom(room, now(), access.role) }); return;
+      send(res, 200, { role: access.role, room: publicRoom(room, now(), access.role, access.participant?.id) }); return;
+    }
+    if (req.method === "POST" && op === "quiz-answer") {
+      if (access.role !== "student") {
+        send(res, 403, { error: "Somente alunos podem responder." }); return;
+      }
+      if (room.status !== "open" || room.quiz?.phase !== "open") {
+        send(res, 409, { error: "Não há uma pergunta aberta para responder." }); return;
+      }
+      let input;
+      try { input = await readJSON(req); }
+      catch (error) {
+        if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Voto inválido." });
+        return;
+      }
+      if (input.quizId !== room.quiz.id) {
+        send(res, 409, { error: "Esta pergunta não está mais aberta." }); return;
+      }
+      if (!OPTION_IDS.includes(input.optionId)) {
+        send(res, 422, { error: "Escolha uma alternativa válida." }); return;
+      }
+      const voteKey = `${roomId}:${room.quiz.id}:${access.participant.id}`;
+      if (votesInFlight.has(voteKey)) {
+        send(res, 409, { error: "Sua resposta já está sendo registrada." }); return;
+      }
+      if (room.quiz.votes?.[access.participant.id]) {
+        const previous = room.quiz.votes[access.participant.id];
+        if (previous !== input.optionId) {
+          send(res, 409, { error: "Você já respondeu a esta pergunta. A resposta não pode ser alterada." }); return;
+        }
+        send(res, 200, { quiz: quizForRole(room.quiz, "student", access.participant.id) }); return;
+      }
+      votesInFlight.add(voteKey);
+      const currentQuiz = room.quiz;
+      const version = currentQuiz.version;
+      try {
+        // Only one vote per participant token and quiz; no identity registration required.
+        // Check the phase again after reading request data, before the first await.
+        if (room.quiz !== currentQuiz || currentQuiz.phase !== "open" || room.status !== "open") {
+          send(res, 409, { error: "A pergunta foi encerrada." }); return;
+        }
+        currentQuiz.votes ??= {};
+        currentQuiz.votes[access.participant.id] = input.optionId;
+        currentQuiz.version++;
+        await persist(room);
+        send(res, 200, { quiz: quizForRole(currentQuiz, "student", access.participant.id) }); return;
+      } catch {
+        delete currentQuiz.votes?.[access.participant.id];
+        currentQuiz.version = Math.max(currentQuiz.version, version);
+        if (!res.headersSent && !res.destroyed) send(res, 503, { error: "Não foi possível salvar sua resposta. Tente novamente." });
+        return;
+      } finally {
+        votesInFlight.delete(voteKey);
+      }
+    }
+    if (req.method === "POST" && op === "quiz-reveal") {
+      if (access.role !== "teacher") {
+        send(res, 403, { error: "Somente o professor pode revelar resultados." }); return;
+      }
+      if (!room.quiz || room.quiz.phase !== "closed") {
+        send(res, 409, { error: "Encerre a pergunta antes de revelar os resultados." }); return;
+      }
+      if (!room.quiz.revealed) {
+        room.quiz.revealed = true;
+        room.quiz.version++;
+        await persist(room);
+      }
+      send(res, 200, { quiz: quizForRole(room.quiz, "teacher") }); return;
     }
     if (req.method === "POST" && ["quiz", "quiz-open", "quiz-close"].includes(op)) {
       if (access.role !== "teacher") {
