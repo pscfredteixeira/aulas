@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-const OPTION_IDS = ["A", "B", "C", "D"];
+export const OPTION_IDS = ["A", "B", "C", "D"];
 
 function cleanText(value, min, max) {
   if (typeof value !== "string") return null;
@@ -9,7 +9,7 @@ function cleanText(value, min, max) {
   return text;
 }
 
-/** Validate teacher input on the server; never rely on frontend validations. */
+/** Validate all teacher input server-side, never trust form controls alone. */
 export function createQuizDraft(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     return { error: "Dados da pergunta inválidos." };
@@ -39,13 +39,23 @@ export function createQuizDraft(input) {
       options,
       correctOptionId: input.correctOptionId,
       phase: "draft",
-      version: 1,
+      revealed: false,
+      votes: {},
+      version: 1
     }
   };
 }
 
-/** The answer key never reaches a student, even when the question is closed. */
-export function quizForRole(quiz, role) {
+export function tallyQuiz(quiz) {
+  const counts = { A: 0, B: 0, C: 0, D: 0 };
+  for (const answer of Object.values(quiz.votes || {})) {
+    if (Object.hasOwn(counts, answer)) counts[answer]++;
+  }
+  return { total: Object.values(counts).reduce((a, b) => a + b, 0), counts };
+}
+
+/** Private data (all individual votes and teacher answer key) never leaks via a student API response. */
+export function quizForRole(quiz, role, participantId = null) {
   if (!quiz) return null;
   if (role !== "teacher" && quiz.phase === "draft") return null;
   const visible = {
@@ -53,8 +63,18 @@ export function quizForRole(quiz, role) {
     prompt: quiz.prompt,
     options: quiz.options,
     phase: quiz.phase,
-    version: quiz.version
+    version: quiz.version,
+    revealed: Boolean(quiz.revealed)
   };
-  if (role === "teacher") visible.correctOptionId = quiz.correctOptionId;
+  if (role === "teacher") {
+    visible.correctOptionId = quiz.correctOptionId;
+    visible.results = tallyQuiz(quiz);
+  } else {
+    visible.myAnswer = participantId ? (quiz.votes?.[participantId] ?? null) : null;
+    if (quiz.phase === "closed" && quiz.revealed) {
+      visible.correctOptionId = quiz.correctOptionId;
+      visible.results = tallyQuiz(quiz);
+    }
+  }
   return visible;
 }
