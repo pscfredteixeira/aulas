@@ -2,7 +2,7 @@
 
 Plataforma web de **aulas ao vivo e interativas**: professor e alunos participam com câmera e microfone, enquanto o professor apresenta quizzes e outras atividades sem interromper a videochamada.
 
-> **Estado:** Sprint 4 — criação e exibição de perguntas durante a videoaula implementadas. Votação e apuração ainda não disponíveis (Sprint 5). A confirmação audiovisual em dois dispositivos continua pendente.  
+> **Estado:** Sprint 5 — aluno já pode votar; professor acompanha totais e escolhe quando revelar gabarito. Código, testes e implantação da API concluídos. A experiência audiovisual em dois dispositivos reais ainda precisa ser validada.  
 > **Regra permanente:** professores e alunos usam apenas o navegador — sem Node.js, terminal, extensões ou instalação de aplicativos. O acesso continua sem cadastro na primeira versão.
 > **Importante:** as permissões de professor e aluno são verificadas no backend hospedado em https://aulas-api-vrdo.onrender.com. O GitHub Actions já compilou o site com a API, mas os fluxos devem ser verificados em navegadores reais.
 
@@ -37,6 +37,7 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 - [Sprint 2 — implementação, testes e publicação online](docs/SPRINT-2.md)
 - [Sprint 3 — sala protegida, implantação da API e limites](docs/SPRINT-3.md)
 - [Sprint 4 — edição e apresentação de perguntas durante a chamada](docs/SPRINT-4.md)
+- [Sprint 5 — votação, resultados e limites da primeira versão interativa](docs/SPRINT-5.md)
 - [Modelo inicial de uma aula em JSON](examples/aula.exemplo.json)
 
 ## Usar o Aulas sem instalar nada
@@ -58,7 +59,7 @@ npm install
 npm run dev
 ```
 
-O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo exibe perguntas, mas ainda não recebe votos; o VDO.Ninja não é protegido pela API de salas.** Não o utilize com dados sensíveis.
+O Node.js nunca será exigido de quem apenas ministra ou assiste às aulas. **O protótipo recebe votos, mas não garante uma resposta por pessoa real; o VDO.Ninja não é protegido pela API de salas.** Não o utilize com dados sensíveis.
 
 ## Ativar a API sem instalar nada — preparação concluída
 
@@ -68,7 +69,7 @@ O backend do Sprint 3 **foi implantado no Render** em https://aulas-api-vrdo.onr
 
 **Implantação realizada.** O workflow já utiliza a URL do Render, com possibilidade de substituí-la posteriormente pela variável `AULAS_API_URL`. [Passo a passo (sem terminal)](docs/IMPLANTAR-API.md).
 
-O plano gratuito do Render pode hibernar e reiniciar a API, perdendo salas que ainda ficam em memória. Portanto, isto serve para testes: **não use este protótipo em aulas reais com dados sensíveis**.
+O Render gratuito pode hibernar e causar demora para abrir a aula. As salas e respostas agora são gravadas no Firestore, mas a validação em turmas reais continua pendente. **Não use este protótipo em aulas com dados sensíveis.**
 
 ## Sprint 3 — Sala do professor e dos alunos
 
@@ -82,18 +83,18 @@ O backend está em [apps/server](apps/server/README.md). A implantação está e
 
 Já é possível preparar uma pergunta com **quatro alternativas e gabarito**, salvar um rascunho, **abrir a atividade para os alunos** e encerrá-la, sem desmontar o vídeo VDO.Ninja. A pergunta é exibida ao lado da chamada, em uma área responsiva.
 
-**Importante:** o aluno ainda não envia a resposta pela plataforma. A votação, a contagem e os resultados serão implementados no Sprint 5.
+**Evolução:** o Sprint 5 adicionou votação por aluno, contagem agregada e revelação do gabarito pelo professor.
 
 - [Como testar uma pergunta ao vivo](docs/SPRINT-4.md)
 - [Código do painel de quiz](apps/web/src/QuizPanel.tsx)
 
-As perguntas são temporárias: ficam apenas na memória do Render e podem desaparecer se o serviço reiniciar ou hibernar.
+As perguntas e respostas são gravadas no Firebase Firestore enquanto a sala estiver válida (expiração em 12 horas).
 
-## Persistência com Firebase — preparada, ainda não ativada
+## Persistência com Firebase — ativa
 
-O projeto agora suporta **Firebase Cloud Firestore** como banco para salas, participantes e perguntas. Isso permitirá recuperar os convites após reinícios do Render. O código passou nos testes de recuperação com um armazenamento simulado.
+O Aulas utiliza **Firebase Cloud Firestore** no servidor Render para guardar salas, hashes de credenciais, perguntas e respostas por participação. A API pública confirmou a conexão e passou em teste de criação, votação e resultados.
 
-**Falta conectar um projeto Firebase à API:** por segurança, a credencial deve ser configurada somente no ambiente privado do Render pelo administrador. Até lá, as salas continuam em memória e podem desaparecer. [Como configurar sem instalar programas](docs/FIREBASE.md).
+A credencial fica apenas nas variáveis privadas do Render e **não deve ser colocada no GitHub ou enviada pelo chat**. O Firestore recupera salas após reinícios enquanto não expirarem. [Configuração e segurança](docs/FIREBASE.md).
 
 O PostgreSQL gratuito criado no Render durante a avaliação **não foi conectado ao Aulas** e não será usado nesta arquitetura.
 
@@ -101,8 +102,8 @@ O PostgreSQL gratuito criado no Render durante a avaliação **não foi conectad
 
 - **Frontend:** React + TypeScript + Vite (implementado no Sprint 2)
 - **Vídeo/áudio:** VDO.Ninja incorporado no navegador (testar comportamento real da sala e restrições dos iframes)
-- **Atividades:** Node.js com HTTP e atualização periódica (~3 s) no Sprint 4; sincronização de votos por WebSocket/Socket.IO prevista para o Sprint 5
-- **Persistência:** Firebase Firestore preparado, mas depende de configurar credencial privada; por enquanto salas e perguntas continuam em memória
+- **Atividades:** Node.js com HTTP, votos autenticados por participação e consulta de totais a cada ~3 segundos; WebSocket/SSE é melhoria futura.
+- **Persistência:** Firebase Cloud Firestore ativo para salas, participantes e votos (expiração de sala após 12 horas)
 - **Versionamento:** GitHub, com separação entre frontend, backend e conteúdo
 
 A tecnologia audiovisual e a sincronização dos quizzes são **subsistemas distintos**. Não presumir que a API do VDO.Ninja sincronize automaticamente os quizzes.
