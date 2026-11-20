@@ -223,3 +223,37 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .video-direct-link { display: block; text-align: center; margin-top: 12px;
   color: #64418c; font-size: 12px; font-weight: 700;
   text-decoration: underline; text-underline-offset: 3px; }
+
+
+/* O convite de aluno abre uma tela de entrada, não a ferramenta de criação de salas. */
+.main-content--student {
+  max-width: 560px;
+  display: block;
+  padding-top: 22px;
+  padding-bottom: 32px;
+}
+.main-content--student .setup-panel { padding: 34px; }
+.main-content--student .setup-panel .panel-heading { margin-bottom: 22px; }
+.main-content--student .setup-panel .panel-heading h2 { font-size: 23px; line-height: 1.25; }
+.main-content--student .setup-panel form {
+  display: flex;
+  flex-direction: column;
+}
+.main-content--student .setup-panel .join-button {
+  order: 1;
+  margin-top: 18px;
+}
+.main-content--student .setup-panel .device-test {
+  order: 2;
+  margin: 27px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid #eee8f3;
+}
+.main-content--student .setup-panel .preview-box { order: 3; margin-top: 14px; }
+.main-content--student .setup-panel .device-test + .feedback { order: 4; }
+.main-content--student .privacy-note { max-width: 440px; margin-top: 20px; }
+@media (max-width: 560px) {
+  .main-content--student { padding: 20px 16px 28px; }
+  .main-content--student .setup-panel { padding: 24px 18px; }
+  .main-content--student .setup-panel .panel-heading h2 { font-size: 20px; }
+}
