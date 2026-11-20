@@ -1,60 +1,51 @@
-# Aulas — Serviço de salas (Sprint 3)
+# Aulas — Backend de salas, quizzes e respostas
 
-Este é o backend que **valida quem é professor e quem é aluno**. Ele não transmite vídeo: o VDO.Ninja continua responsável por áudio e imagem. O código não requer bibliotecas externas e usa APIs nativas do Node.js 22+.
+API Node.js 22+ hospedada no Render, usando `firebase-admin` para armazenar salas e votos no Cloud Firestore. **Professores e alunos não instalam Node.js**: entram pelo site HTTPS do Aulas.
 
-## Onde ele roda?
+A API **não** transmite nem controla a mídia VDO.Ninja, que continua no iframe do navegador.
 
-O serviço roda em **servidor remoto**, nunca na máquina do professor ou do aluno. Em produção, hospedar em provedor que ofereça Node.js persistente, HTTPS e variável de ambiente `AULAS_ALLOWED_ORIGINS=https://pscfredteixeira.github.io`. O GitHub Pages **não** executa esse backend.
+## Configuração
 
-A interface utiliza a variável de build `VITE_AULAS_API_URL`. O workflow do GitHub Pages lê a variável de repositório `AULAS_API_URL` automaticamente. Não configurar esse valor até a API estar disponível em HTTPS; enquanto isso, o site continua em **modo audiovisual experimental**, sem links administrativos.
+- `PORT`: porta HTTP, definida pelo Render.
+- `AULAS_ALLOWED_ORIGINS`: origens exatas separadas por vírgula; atualmente `https://pscfredteixeira.github.io`.
+- `FIREBASE_SERVICE_ACCOUNT_JSON`: conteúdo integral da credencial de conta de serviço do Firebase Admin, **somente no ambiente privado do Render**. Nunca colocar a chave no GitHub, em logs, em mensagens ou no frontend. Sem ela, a API volta ao modo temporário em memória.
+- `GET /api/health`: informa `{"ok":true,"persistent":true}` quando Firestore está ativo (não expõe credenciais).
 
-## Para desenvolvedores (opcional)
+O servidor usa apenas uma instância no Render Free. O Firestore guarda documentos de salas, incluindo hashes SHA-256 de credenciais (sem tokens em texto), perguntas, fase e votos por identificador efêmero de participação. As salas expiram em 12 horas. Reinícios do processo não devem apagá-las; a implantação atual foi testada contra o Firestore, mas a recuperação depois de reinício real deve ser validada em dois aparelhos.
+
+## Endpoints das salas
+
+Todas as rotas aceitam JSON e respondem com `Cache-Control: no-store`:
+
+- `GET /api/health`: integridade do backend e indicador de Firestore.
+- `POST /api/rooms` com `{"name":"Docente"}`: cria uma sala e retorna um segredo privado de professor.
+- `POST /api/rooms/:id/teacher` com `{"secret":"..."}`: valida o professor.
+- `POST /api/rooms/:id/join` com `{"name":"Aluno"}`: cria participação e retorna token exclusivo de aluno.
+- `GET /api/rooms/:id/state` com `Authorization: Bearer <token>`: estado para o papel autenticado.
+- `POST /api/rooms/:id/leave`: aluno encerra sua participação.
+- `POST /api/rooms/:id/close`: professor encerra a sala **no Aulas**.
+- `POST /api/rooms/:id/rotate`: professor renova o segredo privado (revoga o anterior).
+
+## Endpoints de quiz
+
+- `POST /api/rooms/:id/quiz` com token do **professor** e `{"prompt":"Pergunta válida?","options":["A","B","C","D"],"correctOptionId":"A"}`: cria rascunho. Quatro alternativas distintas, enunciado 10–400 caracteres e alternativas 1–160 caracteres.
+- `POST /api/rooms/:id/quiz-open`: professor abre a votação.
+- `POST /api/rooms/:id/quiz-answer` com token de **aluno**, `{"quizId":"id","optionId":"A"}`: um voto por participação. Repetir o mesmo é idempotente; tentar trocar devolve HTTP 409. O voto só é aceito com questão e sala abertas.
+- `POST /api/rooms/:id/quiz-close`: professor encerra a votação e bloqueia novos votos.
+- `POST /api/rooms/:id/quiz-reveal`: professor divulga resultado e gabarito para a turma, **somente depois de encerrar**.
+
+A API retorna para alunos `quiz.myAnswer` individualmente, nunca `quiz.votes` completo. As contagens agregadas `quiz.results` e `quiz.correctOptionId` aparecem aos alunos **somente após a revelação**; o professor sempre tem acesso. O frontend consulta o estado a cada ~3 segundos. WebSocket/SSE ainda não está implementado.
+
+## Testes
 
 ```bash
 cd apps/server
+npm install
 npm run test
-npm start
 ```
 
-Por padrão, porta 8787; `AULAS_ALLOWED_ORIGINS` é uma lista separada por vírgulas de origens exatas permitidas. Frontend local pode usar `VITE_AULAS_API_URL=http://localhost:8787`.
+O GitHub Actions também testa criação, segurança de papéis, votos duplicados e recuperação com Firestore simulado. A publicação executa `node apps/server/tests/live-smoke.mjs` contra a API real com nomes fictícios: cria sala, registra dois votos, apura e revela gabarito.
 
-## Contrato HTTP do Sprint 3
+**Limitações:** sem conta não há garantia de um voto por pessoa real; apenas por token. O Firestore atual não tem controle distribuído de concorrência para múltiplas instâncias. O plano Render Free pode hibernar e atrasar respostas. O segredo do professor protege somente a API do Aulas, **não** impede acesso direto à chamada VDO.Ninja. Não usar para informações confidenciais nem avaliações formais.
 
-- `GET /api/health`: status técnico, sem informações das salas.
-- `POST /api/rooms` com `{"name":"Professor"}`: cria sala e devolve `roomId` e `teacherSecret` **uma única vez**.
-- `POST /api/rooms/:id/teacher` com `{"secret":"..."}`: valida acesso administrativo.
-- `POST /api/rooms/:id/join` com `{"name":"Aluno"}`: retorna `participantToken`.
-- `GET /api/rooms/:id/state` com cabeçalho `Authorization: Bearer <token>`: informações do estado e participantes ativos.
-- `POST /api/rooms/:id/leave` com token do aluno: encerra presença.
-- `POST /api/rooms/:id/close` com token do professor: encerra sala **na aplicação Aulas**.
-- `POST /api/rooms/:id/rotate` com token do professor: revoga segredo anterior e gera outro.
-
-Todas as respostas usam JSON e `Cache-Control: no-store`. Segredos são gerados com aleatoriedade criptográfica e armazenados somente como hashes SHA-256 no servidor. A API verifica permissões em cada requisição, restringe origens e aplica limites básicos por IP. A sala expira em 12 horas; o armazenamento é **em memória** e reiniciar o processo perde as salas.
-
-## Endpoints de perguntas (Sprint 4)
-
-- `POST /api/rooms/:id/quiz` com token **do professor** e JSON no formato `{"prompt":"Pergunta?","options":["A","B","C","D"],"correctOptionId":"A"}` cria/substitui o rascunho (quatro alternativas obrigatórias).
-- `POST /api/rooms/:id/quiz-open` com token do professor abre o rascunho para os alunos.
-- `POST /api/rooms/:id/quiz-close` com token do professor encerra a pergunta aberta.
-- `GET /api/rooms/:id/state` passa a incluir `room.quiz`; **alunos não recebem rascunhos nem `correctOptionId`**, nem depois de encerrada.
-- As transições são `draft → open → closed`. Outra pergunta só pode substituir uma pergunta **encerrada**, nunca uma aberta.
-
-O envio de respostas e a revelação de gabarito para a turma **não estão implementados** no Sprint 4. As perguntas ficam somente na memória e são perdidas caso o serviço do Render reinicie.
-
-## Banco de salas no Firebase (preparado)
-
-O backend suporta **Firestore**: basta configurar a variável privada `FIREBASE_SERVICE_ACCOUNT_JSON` no serviço Render, com o JSON integral da conta de serviço Firebase Admin. Sem a variável, a API continua em memória para testes.
-
-Com Firestore ativo, o endpoint `GET /api/health` passa a informar `"persistent":true`. As salas, participantes e quiz são recuperáveis após reinícios até a expiração normal da sala (12h). O frontend e os usuários nunca recebem a credencial do Firebase.
-
-[Configuração segura, passo a passo](../../docs/FIREBASE.md). Não inserir a chave no GitHub e não compartilhar em mensagens.
-
-## Limites importantes
-
-**O controle de acesso protege os endpoints do Aulas, não a sala audiovisual do VDO.Ninja.** Conhecer o nome real da sala no VDO.Ninja permite tentar acessá-la diretamente. O encerramento de sala do Aulas não remove pessoas conectadas no VDO.Ninja em outra aba, e não equivale à moderação de chamada. A aplicação usa o código de sala compartilhado para vídeo. Portanto, não use esta versão para discussões confidenciais nem para classes em produção com dados sensíveis.
-
-A API ainda não oferece sincronização de quizzes (Sprints 4 e 5), não guarda histórico e não possui login. Tokens e nomes não devem constar em logs. CORS não substitui autenticação; a API autentica cada ação privilegiada no servidor.
-
-### Testes
-
-`npm run test`: cria um servidor isolado na porta aleatória e valida criação de sala, segregação de acessos, revogação, encerramento e entrada por aluno. A implantação em hospedagem externa precisa ser validada separadamente.
+Mais detalhes em [Sprint 5](../../docs/SPRINT-5.md) e [Firebase](../../docs/FIREBASE.md).
