@@ -53,16 +53,16 @@ Entregas:
 
 **Pronto quando:** professor inicia pergunta e aluno consegue visualizar durante a chamada. **Implementado em código no Sprint 4:** editor de quatro alternativas, rascunho, abrir e encerrar, visualização sem gabarito para aluno e consulta de estado a cada ~3 segundos. Conferir a publicação do backend e um teste real com dois dispositivos. [Detalhes](SPRINT-4.md).
 
-## Sprint 5 — Resposta em tempo real
+## Sprint 5 — Votação e apuração quase em tempo real
 
 **Objetivo:** fechar o ciclo de interação.
 
-- Socket.IO para publicar pergunta, receber respostas e atualizar totais.
+- Implementado: HTTP para publicar pergunta, receber respostas e consultar totais a cada aproximadamente 3 segundos. **WebSocket/Socket.IO ainda não implementado**; acompanhar eventual necessidade após o piloto.
 - Autorização por papel, anti-duplicação e reconexão.
 - Professor decide quando revelar resultados.
 - Testar inconsistências, simultaneidade e perda de conexão.
 
-**Pronto quando:** professor vê quantos responderam e os resultados são consistentes após recarregar páginas.
+**Estado:** código, testes automatizados e publicação concluídos. Teste real contra a API pública aprovou dois votos, contagem e revelação do gabarito. Falta validação da interface em dois aparelhos e simulação de turma com seis participantes. [Detalhes](SPRINT-5.md).
 
 **Marco MVP:** ao fim do Sprint 5, haverá uma primeira versão testável de uma aula com vídeo e quiz. A meta de seis participantes depende de validação de desempenho e estabilidade.
 
@@ -115,4 +115,4 @@ Professores e alunos não instalam Node.js, aplicativos ou extensões: acessam o
 
 ## Correção transversal — persistência de salas
 
-Após o relato de convites que falhavam depois de atualizações, foi implementada a camada opcional de **Cloud Firestore** para restaurar sessões, credenciais protegidas e quizzes após reinícios. **Código/testes prontos; ativação pendente de credenciais privadas no Render.** Não considerar os convites persistentes até o indicador `persistent:true` aparecer em `/api/health`. Veja [Firebase no Aulas](FIREBASE.md).
+Após o relato de convites que falhavam depois de atualizações, foi implementada a camada opcional de **Cloud Firestore** para restaurar sessões, credenciais protegidas e quizzes após reinícios. **Credencial instalada com segurança no Render e Firestore ativo; a API e os fluxos de votação foram verificados em testes automáticos.** O indicador `persistent:true` aparece na saúde pública; faltam testes externos de reinício em sala real. Veja [Firebase no Aulas](FIREBASE.md).
