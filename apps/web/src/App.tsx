@@ -273,7 +273,7 @@ export default function App() {
         </span>
       </header>
 
-      <main className={joined ? "main-content main-content--call" : "main-content"}>
+      <main className={joined ? "main-content main-content--call" : isStudentInvite ? "main-content main-content--student" : "main-content"}>
         {joined && mediaUrl ? (
           <section className="call-screen" aria-label="Sala de videoaula">
             <div className="call-heading">
@@ -356,7 +356,7 @@ export default function App() {
           </section>
         ) : (
           <>
-            <section className="hero">
+            {!isStudentInvite && <section className="hero">
               <div className="eyebrow">Aulas mais próximas, mesmo à distância</div>
               <h1>Sua sala de aula.<br /><em>Ao vivo, de verdade.</em></h1>
               <p>Professor e alunos juntos com câmera e microfone, sem instalar nada.
@@ -369,26 +369,27 @@ export default function App() {
                   mas a proteção do link do professor só será ativada quando o serviço de salas estiver hospedado.
                 </p>
               )}
-            </section>
+            </section>}
 
-            <section className="setup-panel" aria-label="Preparar videoaula">
+            <section className="setup-panel" aria-label={isStudentInvite ? "Entrar na aula recebida" : "Preparar videoaula"}>
               <div className="panel-heading">
-                <span className="step-number">01</span>
-                <div><h2>Prepare sua sala</h2><p>Crie uma aula ou entre pelo link de convite.</p></div>
+                <span className="step-number">{isStudentInvite ? "✓" : "01"}</span>
+                <div>
+                  <h2>{isStudentInvite ? "Você foi convidado para uma aula" : "Prepare sua sala"}</h2>
+                  <p>{isStudentInvite
+                    ? "Para participar, informe seu nome. Não precisa criar sala nem fazer cadastro."
+                    : "Crie uma aula ou entre pelo link de convite."}</p>
+                </div>
               </div>
 
-              {isStudentInvite ? (
-                <p className="student-invite-notice" role="status">
-                  <strong>Você recebeu um convite!</strong> Informe seu nome abaixo e clique em
-                  <strong> Entrar na videoaula</strong>. Não precisa criar outra sala.
-                </p>
-              ) : (
+              {!isStudentInvite && (
                 <button type="button" className="button button-outline create-button" onClick={() => void makeRoom()} disabled={busy}>
                   {busy ? "Preparando…" : "+ Criar uma nova sala"}
                 </button>
               )}
 
               <form onSubmit={event => void enterRoom(event)}>
+                {!isStudentInvite && (<>
                 <label htmlFor="room">Código da sala</label>
                 <input
                   id="room" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false}
@@ -432,10 +433,11 @@ export default function App() {
                   <span className="step-number">02</span>
                   <div><h2>Entre na chamada</h2><p>Seu nome ficará visível para os participantes.</p></div>
                 </div>
-                <label htmlFor="display-name">Seu nome</label>
+                </>)}
+                <label htmlFor="display-name">{isStudentInvite ? "Como você quer aparecer na aula?" : "Seu nome"}</label>
                 <input
                   id="display-name" type="text" autoComplete="name" maxLength={40}
-                  placeholder="Como deseja aparecer na aula?"
+                  placeholder={isStudentInvite ? "Digite seu nome" : "Como deseja aparecer na aula?"}
                   value={name} onChange={e => setName(e.target.value)}
                 />
 
