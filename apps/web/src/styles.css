@@ -257,3 +257,57 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .main-content--student .setup-panel { padding: 24px 18px; }
   .main-content--student .setup-panel .panel-heading h2 { font-size: 20px; }
 }
+
+/* Sprint 5 — respostas e apuração no painel do quiz. */
+.quiz-option-text { flex: 1; min-width: 0; }
+.quiz-options > li { margin: 0; }
+.quiz-answer-button {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.quiz-answer-button:hover:not(:disabled),
+.quiz-answer-button:focus-visible {
+  border-color: #8753bf;
+  background: #f5effc;
+  outline-offset: 2px;
+}
+.quiz-option--selected:not(.quiz-option--correct) {
+  background: #f6f0fc;
+  border-color: #b49ed4;
+}
+.quiz-correct-label,
+.quiz-selected-label {
+  flex: none;
+  font-size: 10px;
+  font-weight: 800;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.quiz-correct-label { color: #2a7744; }
+.quiz-selected-label { color: #6940a1; }
+.quiz-option--correct .quiz-selected-label { margin-left: 0; }
+.quiz-answer-confirmation {
+  color: #386642;
+  background: #eaf7ec;
+  border: 1px solid #c6e6cd;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  margin: 14px 0 6px;
+}
+.quiz-results { margin-top: 19px; padding: 17px 15px 13px; border: 1px solid #e8deef;
+  border-radius: 13px; background: #fbf8fe; }
+.quiz-results h4 { margin: 0 0 4px; font-size: 15px; }
+.quiz-results > p { margin: 0 0 13px; font-size: 12px; color: #72647c; }
+.quiz-result-row { margin: 10px 0; }
+.quiz-result-label { display: flex; justify-content: space-between; align-items: center;
+  color: #55446c; font-size: 12px; margin-bottom: 5px; }
+.quiz-result-track { height: 9px; border-radius: 999px; overflow: hidden; background: #e8dff0; }
+.quiz-result-fill { height: 100%; min-width: 0; border-radius: inherit; background: #7542b1;
+  transition: width .25s ease; }
