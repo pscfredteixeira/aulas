@@ -70,6 +70,7 @@ function publicRoom(room, now, role = "student", participantId = null) {
     teacher: room.teacherName,
     quiz: quizForRole(room.quiz, role, participantId),
     activity: activityForRole(room.activity, role, participantId),
+    focus: room.focus === "activity" ? "activity" : "quiz",
     participants: [...room.participants.values()]
       .filter(p => now - p.lastSeen < ACTIVE_MS)
       .map(p => ({ id: p.id, name: p.name }))
@@ -143,7 +144,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         const room = {
           id: roomId, teacherName, teacherHash: digest(teacherSecret),
           expiresAt: now() + ROOM_TTL_MS,
-          status: "open", participants: new Map(), quiz: null, activity: null
+          status: "open", participants: new Map(), quiz: null, activity: null, focus: "quiz"
         };
         rooms.set(roomId, room);
         try { await persist(room); }
@@ -315,6 +316,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
           send(res, 409, { error: "Encerre o quiz antes de abrir esta atividade." }); return;
         }
         room.activity.phase = "open";
+        room.focus = "activity";
         room.activity.version++;
         await persist(room);
         send(res, 200, { activity: activityForRole(room.activity, "teacher") }); return;
@@ -462,6 +464,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
           send(res, 409, { error: "Crie um rascunho antes de abrir a pergunta." }); return;
         }
         room.quiz.phase = "open";
+        room.focus = "quiz";
         room.quiz.version++;
         await persist(room);
         send(res, 200, { quiz: quizForRole(room.quiz, "teacher") }); return;
