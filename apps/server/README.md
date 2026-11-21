@@ -36,6 +36,23 @@ Todas as rotas aceitam JSON e respondem com `Cache-Control: no-store`:
 
 A API retorna para alunos `quiz.myAnswer` individualmente, nunca `quiz.votes` completo. As contagens agregadas `quiz.results` e `quiz.correctOptionId` aparecem aos alunos **somente após a revelação**; o professor sempre tem acesso. O frontend consulta o estado a cada ~3 segundos. WebSocket/SSE ainda não está implementado.
 
+## Endpoints de atividades (Sprint 6)
+
+Há três modalidades: **`poll`** (enquete sem gabarito), **`open_question`** (pergunta aberta) e **`case`** (estudo de caso com texto de contexto). Todos os comandos administrativos são validados com token de professor:
+
+- `POST /api/rooms/:id/activity`: criar rascunho, JSON `{"type":"poll","prompt":"Qual tema prefere?","options":["Freud","Lacan"]}`. Para um caso usar `{"type":"case","prompt":"Como discutir a situação?","context":"Descrição fictícia com ao menos vinte caracteres."}`.
+- `POST /api/rooms/:id/activity-open`: abrir atividade, desde que não haja quiz aberto.
+- `POST /api/rooms/:id/activity-close`: encerrar e bloquear novas contribuições.
+- `POST /api/rooms/:id/activity-answer`: token **de aluno**; JSON `{"activityId":"...","optionId":"A"}` para enquete, ou `{"activityId":"...","text":"Minha contribuição"}` nas atividades escritas.
+- `POST /api/rooms/:id/activity-reveal`: professor publica contagem de uma enquete encerrada.
+- `POST /api/rooms/:id/activity-moderate`: professor controla visibilidade de um texto `{"activityId":"...","responseId":"...","approved":true}`.
+
+`GET /api/rooms/:id/state` retorna `room.activity` por papel e `room.focus` com o tipo de atividade mais recente. **Alunos nunca recebem textos não aprovados de outras pessoas nem seus nomes vinculados às contribuições.** Textos são compartilhados com a turma somente quando moderados; mesmo assim, evitar dados clínicos e pessoais.
+
+Os dados ficam no Firestore durante as 12h de validade da sala; cada nova atividade substitui a anterior da mesma modalidade. Não há garantia de uma resposta por pessoa real sem identidade.
+
+[Documentação do Sprint 6](../../docs/SPRINT-6.md).
+
 ## Testes
 
 ```bash
