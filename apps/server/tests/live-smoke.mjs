@@ -65,9 +65,67 @@ try {
   const revealed = await request(root + "/state", "GET", undefined, bruno.participantToken);
   ensure(revealed.room.quiz.correctOptionId === "A" && revealed.room.quiz.results.total === 2,
     "Aluno não recebeu o resultado após autorização do professor.");
+  // Sprint 6: enquete sem gabarito.
+  const poll = await request(root + "/activity", "POST", {
+    type: "poll",
+    prompt: "Que assunto a turma prefere discutir?",
+    options: ["Desejo e cultura", "Sonhos e símbolos", "Conceito de transferência"]
+  }, teacherSecret, 201);
+  ensure(poll.activity.phase === "draft", "Rascunho de enquete inválido.");
+  ensure((await request(root + "/state", "GET", undefined, alice.participantToken)).room.activity === null,
+    "Enquete em rascunho ficou visível para alunos.");
+  await request(root + "/activity-open", "POST", {}, teacherSecret);
+  await request(root + "/activity-answer", "POST",
+    { activityId: poll.activity.id, optionId: "A" }, alice.participantToken);
+  await request(root + "/activity-answer", "POST",
+    { activityId: poll.activity.id, optionId: "B" }, bruno.participantToken);
+  await request(root + "/activity-answer", "POST",
+    { activityId: poll.activity.id, optionId: "B" }, alice.participantToken, 409);
+  const pollState = await request(root + "/state", "GET", undefined, teacherSecret);
+  ensure(pollState.room.focus === "activity" && pollState.room.activity.results.total === 2,
+    "Enquete não apurou dois votos ou não foi exibida na turma.");
+  ensure(!("results" in (await request(root + "/state", "GET", undefined, alice.participantToken)).room.activity),
+    "Resultado vazou antes de divulgação.");
+  await request(root + "/activity-close", "POST", {}, teacherSecret);
+  await request(root + "/activity-reveal", "POST", {}, teacherSecret);
+  const finalPoll = (await request(root + "/state", "GET", undefined, alice.participantToken)).room.activity;
+  ensure(finalPoll.results.total === 2 && !("correctOptionId" in finalPoll),
+    "Resultado de enquete não chegou ou ganhou gabarito indevido.");
+
+  // Sprint 6: pergunta aberta com moderação (sem revelar o nome do autor ao aluno).
+  const openQuestion = await request(root + "/activity", "POST", {
+    type: "open_question",
+    prompt: "Como a expectativa social influencia nossas escolhas?"
+  }, teacherSecret, 201);
+  await request(root + "/activity-open", "POST", {}, teacherSecret);
+  await request(root + "/activity-answer", "POST", {
+    activityId: openQuestion.activity.id, text: "Podemos investigar a relação entre desejo e cultura."
+  }, alice.participantToken);
+  const teacherContributions = (await request(root + "/state", "GET", undefined, teacherSecret)).room.activity.responses;
+  ensure(teacherContributions.length === 1, "Professor não viu contribuição para moderar.");
+  const hiddenContributions = (await request(root + "/state", "GET", undefined, bruno.participantToken)).room.activity;
+  ensure(hiddenContributions.approvedResponses.length === 0, "Texto foi divulgado sem aprovação.");
+  await request(root + "/activity-moderate", "POST", {
+    activityId: openQuestion.activity.id, responseId: teacherContributions[0].id, approved: true
+  }, teacherSecret);
+  const approved = (await request(root + "/state", "GET", undefined, bruno.participantToken)).room.activity;
+  ensure(approved.approvedResponses.length === 1 &&
+    !JSON.stringify(approved).includes("Aluna de teste A"), "Moderação falhou ou expôs o nome do autor.");
+  await request(root + "/activity-close", "POST", {}, teacherSecret);
+
+  const study = await request(root + "/activity", "POST", {
+    type: "case",
+    context: "Uma pessoa está dividida entre expectativas familiares e a escolha de uma trajetória profissional.",
+    prompt: "Que perguntas podem orientar uma discussão sobre esse caso fictício?"
+  }, teacherSecret, 201);
+  await request(root + "/activity-open", "POST", {}, teacherSecret);
+  const caseState = (await request(root + "/state", "GET", undefined, bruno.participantToken)).room.activity;
+  ensure(caseState.type === "case" && caseState.context.includes("trajetória profissional"),
+    "Estudo de caso não chegou à turma.");
+  await request(root + "/activity-close", "POST", {}, teacherSecret);
   await request(root + "/close", "POST", {}, teacherSecret);
-  console.log("OK: Firestore ativo; convites, votos individuais, contagem e revelação do quiz validados na API pública.");
+  console.log("OK: Firestore ativo; Sprint 5 e Sprint 6 validados na API pública: quiz, enquete, moderação e estudo de caso.");
 } catch (error) {
-  console.error("FALHA no teste de quiz:", error instanceof Error ? error.message : "erro desconhecido");
+  console.error("FALHA no teste público de atividades:", error instanceof Error ? error.message : "erro desconhecido");
   process.exitCode = 1;
 }
