@@ -2,7 +2,7 @@
 
 Plataforma web de **aulas ao vivo e interativas**: professor e alunos participam com câmera e microfone, enquanto o professor apresenta quizzes e outras atividades sem interromper a videochamada.
 
-> **Estado:** Sprint 5 — aluno já pode votar; professor acompanha totais e escolhe quando revelar gabarito. Código, testes e implantação da API concluídos. A experiência audiovisual em dois dispositivos reais ainda precisa ser validada.  
+> **Estado:** Sprint 6 — enquetes, perguntas abertas com moderação e estudos de caso implementados no código. A API foi atualizada no Render; testes automáticos aprovados. Falta validar a experiência audiovisual completa em dispositivos reais.  
 > **Regra permanente:** professores e alunos usam apenas o navegador — sem Node.js, terminal, extensões ou instalação de aplicativos. O acesso continua sem cadastro na primeira versão.
 > **Importante:** as permissões de professor e aluno são verificadas no backend hospedado em https://aulas-api-vrdo.onrender.com. O GitHub Actions já compilou o site com a API, mas os fluxos devem ser verificados em navegadores reais.
 
@@ -38,6 +38,7 @@ Não faz parte do MVP: login, pagamentos, emissão de certificados, gravações,
 - [Sprint 3 — sala protegida, implantação da API e limites](docs/SPRINT-3.md)
 - [Sprint 4 — edição e apresentação de perguntas durante a chamada](docs/SPRINT-4.md)
 - [Sprint 5 — votação, resultados e limites da primeira versão interativa](docs/SPRINT-5.md)
+- [Sprint 6 — enquetes, discussões e estudos de caso](docs/SPRINT-6.md)
 - [Modelo inicial de uma aula em JSON](examples/aula.exemplo.json)
 
 ## Usar o Aulas sem instalar nada
@@ -89,6 +90,18 @@ Já é possível preparar uma pergunta com **quatro alternativas e gabarito**, s
 - [Código do painel de quiz](apps/web/src/QuizPanel.tsx)
 
 As perguntas e respostas são gravadas no Firebase Firestore enquanto a sala estiver válida (expiração em 12 horas).
+
+## Sprint 6 — Enquetes, perguntas abertas e estudos de caso
+
+Além dos quizzes com gabarito, o professor pode selecionar **Enquetes e discussões** no painel da aula para:
+
+- fazer uma **enquete sem resposta certa** (2–4 alternativas), acompanhar os votos e publicar porcentagens quando desejar;
+- apresentar uma **pergunta aberta** e aprovar individualmente as contribuições que serão exibidas aos alunos sem identificar os autores;
+- apresentar um **estudo de caso fictício**, com contexto e uma pergunta orientadora, recebendo comentários moderados.
+
+A nova atividade aparece automaticamente ao lado do vídeo dos alunos, sem interromper o iframe VDO.Ninja. **Respostas por participação, não por pessoa autenticada.** Os dados são temporários e não devem incluir informações clínicas ou sensíveis.
+
+[Guia do Sprint 6 e roteiro de teste](docs/SPRINT-6.md).
 
 ## Persistência com Firebase — ativa
 
