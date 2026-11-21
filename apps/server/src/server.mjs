@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createQuizDraft, quizForRole, OPTION_IDS } from "./quiz.mjs";
+import { makeActivityDraft, activityForRole } from "./activity.mjs";
 
 const ROOM_RE = /^aulas-[0-9a-f]{24}$/;
 const MAX_PARTICIPANTS = 30;
@@ -68,6 +69,7 @@ function publicRoom(room, now, role = "student", participantId = null) {
     expiresAt: new Date(room.expiresAt).toISOString(),
     teacher: room.teacherName,
     quiz: quizForRole(room.quiz, role, participantId),
+    activity: activityForRole(room.activity, role, participantId),
     participants: [...room.participants.values()]
       .filter(p => now - p.lastSeen < ACTIVE_MS)
       .map(p => ({ id: p.id, name: p.name }))
@@ -86,6 +88,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
   // Serialize writes per room; avoid an older async write overwriting a newer state.
   const writes = new Map();
   const votesInFlight = new Set();
+  const activityInFlight = new Set();
   async function persist(room) {
     if (!store) return;
     const previous = writes.get(room.id) ?? Promise.resolve();
@@ -140,7 +143,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         const room = {
           id: roomId, teacherName, teacherHash: digest(teacherSecret),
           expiresAt: now() + ROOM_TTL_MS,
-          status: "open", participants: new Map(), quiz: null
+          status: "open", participants: new Map(), quiz: null, activity: null
         };
         rooms.set(roomId, room);
         try { await persist(room); }
@@ -151,7 +154,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         return;
       }
     }
-    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close|quiz-answer|quiz-reveal))?$/);
+    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close|quiz-answer|quiz-reveal|activity|activity-open|activity-close|activity-answer|activity-moderate|activity-reveal))?$/);
     if (!matched) { send(res, 404, { error: "Endereço não encontrado." }); return; }
     const [, roomId, op] = matched;
     let room = rooms.get(roomId);
@@ -203,6 +206,163 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     if (req.method === "GET" && op === "state") {
       if (access.participant) access.participant.lastSeen = now();
       send(res, 200, { role: access.role, room: publicRoom(room, now(), access.role, access.participant?.id) }); return;
+    }
+    if (req.method === "POST" &&
+        ["activity", "activity-open", "activity-close", "activity-reveal", "activity-moderate", "activity-answer"].includes(op)) {
+      if (room.status !== "open") {
+        send(res, 409, { error: "A aula foi encerrada." }); return;
+      }
+      if (op === "activity-answer") {
+        if (access.role !== "student") {
+          send(res, 403, { error: "Apenas alunos podem responder à atividade." }); return;
+        }
+        if (room.activity?.phase !== "open") {
+          send(res, 409, { error: "Não há atividade aberta para responder." }); return;
+        }
+        let input;
+        try { input = await readJSON(req); }
+        catch (error) {
+          if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Resposta inválida." });
+          return;
+        }
+        const activity = room.activity;
+        if (input.activityId !== activity.id) {
+          send(res, 409, { error: "A atividade mudou. Atualize a tela." }); return;
+        }
+        let value;
+        if (activity.type === "poll") {
+          if (!activity.options.some(option => option.id === input.optionId)) {
+            send(res, 422, { error: "Escolha uma alternativa disponível." }); return;
+          }
+          value = input.optionId;
+        } else {
+          if (typeof input.text !== "string") {
+            send(res, 422, { error: "Escreva sua contribuição." }); return;
+          }
+          value = input.text.trim().replace(/\s+/g, " ");
+          if (value.length < 2 || value.length > 600 || /[<>\u0000-\u001f\u007f]/u.test(value)) {
+            send(res, 422, { error: "A contribuição precisa de 2 a 600 caracteres, sem HTML." }); return;
+          }
+        }
+        const participantId = access.participant.id;
+        const previous = activity.type === "poll"
+          ? activity.votes?.[participantId]
+          : activity.submissions?.[participantId]?.text;
+        if (previous !== undefined) {
+          if (previous !== value) {
+            send(res, 409, { error: "Sua resposta já foi registrada e não pode ser alterada." }); return;
+          }
+          send(res, 200, { activity: activityForRole(activity, "student", participantId) }); return;
+        }
+        const key = `${roomId}:${activity.id}:${participantId}`;
+        if (activityInFlight.has(key)) {
+          send(res, 409, { error: "Resposta já está sendo registrada." }); return;
+        }
+        activityInFlight.add(key);
+        try {
+          if (room.activity !== activity || activity.phase !== "open" || room.status !== "open") {
+            send(res, 409, { error: "A atividade foi encerrada." }); return;
+          }
+          if (activity.type === "poll") {
+            activity.votes ??= {};
+            activity.votes[participantId] = value;
+          } else {
+            activity.submissions ??= {};
+            activity.submissions[participantId] = {
+              id: randomBytes(8).toString("hex"),
+              name: access.participant.name,
+              text: value,
+              approved: false
+            };
+          }
+          activity.version++;
+          await persist(room);
+          send(res, 200, { activity: activityForRole(activity, "student", participantId) }); return;
+        } catch {
+          if (activity.type === "poll") delete activity.votes?.[participantId];
+          else delete activity.submissions?.[participantId];
+          if (!res.headersSent && !res.destroyed) send(res, 503, { error: "Não foi possível salvar sua resposta." });
+          return;
+        } finally {
+          activityInFlight.delete(key);
+        }
+      }
+
+      if (access.role !== "teacher") {
+        send(res, 403, { error: "Somente o professor pode controlar atividades." }); return;
+      }
+      if (op === "activity") {
+        if (room.activity?.phase === "open") {
+          send(res, 409, { error: "Encerre a atividade atual antes de criar outra." }); return;
+        }
+        let input;
+        try { input = await readJSON(req); }
+        catch (error) {
+          if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Atividade inválida." });
+          return;
+        }
+        const { activity, error } = makeActivityDraft(input);
+        if (error) { send(res, 422, { error }); return; }
+        room.activity = activity;
+        await persist(room);
+        send(res, 201, { activity: activityForRole(activity, "teacher") }); return;
+      }
+      if (op === "activity-open") {
+        if (room.activity?.phase !== "draft") {
+          send(res, 409, { error: "Crie um rascunho antes de abrir a atividade." }); return;
+        }
+        if (room.quiz?.phase === "open") {
+          send(res, 409, { error: "Encerre o quiz antes de abrir esta atividade." }); return;
+        }
+        room.activity.phase = "open";
+        room.activity.version++;
+        await persist(room);
+        send(res, 200, { activity: activityForRole(room.activity, "teacher") }); return;
+      }
+      if (op === "activity-close") {
+        if (room.activity?.phase !== "open") {
+          send(res, 409, { error: "A atividade não está aberta." }); return;
+        }
+        room.activity.phase = "closed";
+        room.activity.version++;
+        await persist(room);
+        send(res, 200, { activity: activityForRole(room.activity, "teacher") }); return;
+      }
+      if (op === "activity-reveal") {
+        if (room.activity?.type !== "poll" || room.activity.phase !== "closed") {
+          send(res, 409, { error: "Encerre a enquete antes de divulgar os resultados." }); return;
+        }
+        if (!room.activity.revealed) {
+          room.activity.revealed = true;
+          room.activity.version++;
+          await persist(room);
+        }
+        send(res, 200, { activity: activityForRole(room.activity, "teacher") }); return;
+      }
+      if (op === "activity-moderate") {
+        if (!room.activity || room.activity.type === "poll") {
+          send(res, 409, { error: "Não há contribuições escritas para moderar." }); return;
+        }
+        let input;
+        try { input = await readJSON(req); }
+        catch (error) {
+          if (!res.writableEnded && !res.destroyed) send(res, error.statusCode || 400, { error: error.message || "Pedido inválido." });
+          return;
+        }
+        if (input.activityId !== room.activity.id || typeof input.approved !== "boolean" ||
+            typeof input.responseId !== "string") {
+          send(res, 422, { error: "Identificador ou decisão de moderação inválidos." }); return;
+        }
+        const item = Object.values(room.activity.submissions || {})
+          .find(response => response.id === input.responseId);
+        if (!item) { send(res, 404, { error: "Contribuição não encontrada." }); return; }
+        if (item.approved !== input.approved) {
+          item.approved = input.approved;
+          room.activity.version++;
+          await persist(room);
+        }
+        send(res, 200, { activity: activityForRole(room.activity, "teacher") }); return;
+      }
     }
     if (req.method === "POST" && op === "quiz-answer") {
       if (access.role !== "student") {
@@ -295,6 +455,9 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         }
       }
       if (op === "quiz-open") {
+        if (room.activity?.phase === "open") {
+          send(res, 409, { error: "Encerre a outra atividade antes de iniciar o quiz." }); return;
+        }
         if (!room.quiz || room.quiz.phase !== "draft") {
           send(res, 409, { error: "Crie um rascunho antes de abrir a pergunta." }); return;
         }
@@ -321,6 +484,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
       if (access.role !== "teacher") { send(res, 403, { error: "Apenas o professor pode encerrar a sala." }); return; }
       room.status = "closed";
       if (room.quiz?.phase === "open") room.quiz.phase = "closed";
+      if (room.activity?.phase === "open") room.activity.phase = "closed";
       await persist(room);
       send(res, 200, { room: publicRoom(room, now(), "teacher") }); return;
     }
