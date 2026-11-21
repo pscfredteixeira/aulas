@@ -68,10 +68,14 @@ Entregas:
 
 ## Sprint 6 — Atividades pedagógicas adicionais
 
-- Enquete sem gabarito.
-- Pergunta aberta com moderação do professor.
-- Estudo de caso e discussão orientada.
-- Não exigir que professor interrompa a chamada para alternar modalidades.
+- [x] Enquete sem gabarito, com 2–4 opções, votos e divulgação de resultados.
+- [x] Pergunta aberta com resposta escrita e moderação individual do professor.
+- [x] Estudo de caso com contexto fictício e discussão orientada.
+- [x] Troca de modalidade no painel sem desmontar a videochamada.
+- [x] Persistência no Firestore, validações de segurança e testes automatizados.
+- [ ] Teste final de todas as modalidades contra API pública e experiência real em dois dispositivos.
+
+**Código implementado em 21/11/2026.** A turma vê somente a atividade aberta pelo professor e respostas escritas aprovadas; não existe garantia de uma resposta por pessoa real. [Detalhes e plano de testes](SPRINT-6.md).
 
 ## Sprint 7 — Biblioteca de aulas e atividades
 
