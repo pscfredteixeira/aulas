@@ -9,6 +9,7 @@ export function serializeRoom(room) {
     expiresAt: room.expiresAt,
     status: room.status,
     quiz: room.quiz ?? null,
+    activity: room.activity ?? null,
     participants: [...room.participants.values()].map(participant => ({
       id: participant.id,
       name: participant.name,
@@ -43,6 +44,7 @@ export function reviveRoom(raw) {
     expiresAt: raw.expiresAt,
     status: raw.status,
     quiz: raw.quiz ?? null,
+    activity: raw.activity ?? null,
     participants
   };
 }
