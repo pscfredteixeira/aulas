@@ -42,7 +42,7 @@ export default function ActivityPanel({ roomId, token, role, activity, onUpdated
       setType(activity.type);
       setPrompt(activity.prompt);
       setContext(activity.context || "");
-      setOptions(activity.options?.map(option => option.text) || ["", "", "", ""]);
+      setOptions(activity.options ? [...activity.options.map(option => option.text), "", "", ""].slice(0, 4) : ["", "", "", ""]);
     }
   }, [isTeacher, activity?.id]);
 
