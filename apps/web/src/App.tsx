@@ -6,6 +6,7 @@ import {
 } from "./api";
 import type { RoomSnapshot } from "./api";
 import QuizPanel from "./QuizPanel";
+import ActivityPanel from "./ActivityPanel";
 import { createRoomId, inviteUrl, isRoomId, readRoomId, readTeacherSecret, teacherUrl, vdoUrl } from "./room";
 
 type DeviceStatus = "idle" | "testing" | "ready" | "error";
@@ -38,6 +39,7 @@ export default function App() {
   const [role, setRole] = useState<Role>(null);
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [joined, setJoined] = useState(false);
+  const [panelTab, setPanelTab] = useState<"quiz" | "activity">("quiz");
   const [videoOnlyAvailable, setVideoOnlyAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [frameLoaded, setFrameLoaded] = useState(false);
@@ -307,7 +309,7 @@ export default function App() {
           <span>Aulas<span className="logo-dot">.</span></span>
         </a>
         <span className="prototype-label">
-          <span className="status-dot" /> {hasServer ? "Aulas interativas · Sprint 4" : "Sala de teste · Sprint 4"}
+          <span className="status-dot" /> {hasServer ? "Aulas interativas · Sprint 6" : "Sala de teste · Sprint 6"}
         </span>
       </header>
 
@@ -345,13 +347,41 @@ export default function App() {
                 </div>
               </div>
               {hasServer && (role === "teacher" || role === "student") && (
-                <QuizPanel
-                  roomId={room}
-                  token={authToken}
-                  role={role}
-                  quiz={snapshot?.quiz ?? null}
-                  onUpdated={quiz => setSnapshot(previous => previous ? { ...previous, quiz } : previous)}
-                />
+                <div className="lesson-sidebar">
+                  {role === "teacher" && (
+                    <div className="lesson-activity-tabs" role="group" aria-label="Escolher tipo de atividade">
+                      <button type="button" className={panelTab === "quiz" ? "active" : ""}
+                        aria-pressed={panelTab === "quiz"} onClick={() => setPanelTab("quiz")}>
+                        Quiz
+                      </button>
+                      <button type="button" className={panelTab === "activity" ? "active" : ""}
+                        aria-pressed={panelTab === "activity"} onClick={() => setPanelTab("activity")}>
+                        Enquetes e discussões
+                      </button>
+                    </div>
+                  )}
+                  {(role === "teacher" ? panelTab : snapshot?.focus ?? "quiz") === "quiz" ? (
+                    <QuizPanel
+                      roomId={room}
+                      token={authToken}
+                      role={role}
+                      quiz={snapshot?.quiz ?? null}
+                      onUpdated={quiz => setSnapshot(previous => previous ? {
+                        ...previous, quiz, focus: quiz.phase === "open" ? "quiz" : previous.focus
+                      } : previous)}
+                    />
+                  ) : (
+                    <ActivityPanel
+                      roomId={room}
+                      token={authToken}
+                      role={role}
+                      activity={snapshot?.activity ?? null}
+                      onUpdated={activity => setSnapshot(previous => previous ? {
+                        ...previous, activity, focus: activity.phase === "open" ? "activity" : previous.focus
+                      } : previous)}
+                    />
+                  )}
+                </div>
               )}
             </div>
 
