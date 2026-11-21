@@ -35,12 +35,44 @@ export type QuizDraftInput = {
   correctOptionId: QuizOptionId;
 };
 
+export type ActivityType = "poll" | "open_question" | "case";
+export type ActivityPhase = "draft" | "open" | "closed";
+export type ActivityResponse = {
+  id: string;
+  text: string;
+  approved: boolean;
+  name?: string; // Retornado somente para professores.
+};
+export type Activity = {
+  id: string;
+  type: ActivityType;
+  prompt: string;
+  context?: string;
+  options?: { id: QuizOptionId; text: string }[];
+  phase: ActivityPhase;
+  revealed: boolean;
+  version: number;
+  results?: { total: number; counts: Partial<Record<QuizOptionId, number>> };
+  myAnswer?: QuizOptionId | null;
+  myResponse?: ActivityResponse | null;
+  responses?: ActivityResponse[]; // Professor.
+  approvedResponses?: { id: string; text: string }[]; // Aluno, sem nomes.
+};
+export type ActivityDraftInput = {
+  type: ActivityType;
+  prompt: string;
+  context?: string;
+  options?: string[];
+};
+
 export type RoomSnapshot = {
   roomId: string;
   status: "open" | "closed";
   expiresAt: string;
   teacher: string;
   quiz: Quiz | null;
+  activity: Activity | null;
+  focus: "quiz" | "activity";
   participants: { id: string; name: string }[];
 };
 export type CreatedRoom = {
@@ -119,4 +151,35 @@ export function submitQuizAnswer(roomId: string, studentToken: string, quizId: s
 }
 export function revealQuizResults(roomId: string, teacherToken: string) {
   return api<{ quiz: Quiz }>(`/api/rooms/${roomId}/quiz-reveal`, "POST", {}, teacherToken);
+}
+
+export function saveActivityDraft(roomId: string, teacherToken: string, draft: ActivityDraftInput) {
+  return api<{ activity: Activity }>(`/api/rooms/${roomId}/activity`, "POST", draft, teacherToken);
+}
+export function openActivity(roomId: string, teacherToken: string) {
+  return api<{ activity: Activity }>(`/api/rooms/${roomId}/activity-open`, "POST", {}, teacherToken);
+}
+export function closeActivity(roomId: string, teacherToken: string) {
+  return api<{ activity: Activity }>(`/api/rooms/${roomId}/activity-close`, "POST", {}, teacherToken);
+}
+export function revealActivity(roomId: string, teacherToken: string) {
+  return api<{ activity: Activity }>(`/api/rooms/${roomId}/activity-reveal`, "POST", {}, teacherToken);
+}
+export function submitActivityAnswer(
+  roomId: string,
+  studentToken: string,
+  activityId: string,
+  answer: { optionId: QuizOptionId } | { text: string }
+) {
+  return api<{ activity: Activity }>(`/api/rooms/${roomId}/activity-answer`, "POST", { activityId, ...answer }, studentToken);
+}
+export function moderateActivityResponse(
+  roomId: string,
+  teacherToken: string,
+  activityId: string,
+  responseId: string,
+  approved: boolean
+) {
+  return api<{ activity: Activity }>(`/api/rooms/${roomId}/activity-moderate`, "POST",
+    { activityId, responseId, approved }, teacherToken);
 }
