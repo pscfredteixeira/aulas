@@ -72,7 +72,7 @@ export type RoomSnapshot = {
   teacher: string;
   quiz: Quiz | null;
   activity: Activity | null;
-  focus: "quiz" | "activity";
+  focus: "quiz" | "activity" | "none";
   participants: { id: string; name: string }[];
 };
 export type CreatedRoom = {
@@ -182,4 +182,13 @@ export function moderateActivityResponse(
 ) {
   return api<{ activity: Activity }>(`/api/rooms/${roomId}/activity-moderate`, "POST",
     { activityId, responseId, approved }, teacherToken);
+}
+
+/** O professor controla a apresentação compartilhada; ocultar não encerra a sala de vídeo. */
+export function hidePresentation(roomId: string, teacherToken: string) {
+  return api<{ room: RoomSnapshot }>(`/api/rooms/${roomId}/presentation-hide`, "POST", {}, teacherToken);
+}
+
+export function showPresentation(roomId: string, teacherToken: string, focus: "quiz" | "activity") {
+  return api<{ room: RoomSnapshot }>(`/api/rooms/${roomId}/presentation-show`, "POST", { focus }, teacherToken);
 }
