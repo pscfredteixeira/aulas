@@ -55,6 +55,13 @@ export default function App() {
   const hasValidRoom = isRoomId(room);
   const isStudentInvite = Boolean(initialRoom && room === initialRoom && !teacherSecret);
   const hasServer = Boolean(API_BASE_URL);
+  // O professor precisa do painel para preparar questões. Para alunos, ele só
+  // ocupa espaço quando há uma atividade publicada (inclusive resultados).
+  const studentHasActivity = snapshot?.focus === "activity"
+    ? Boolean(snapshot.activity)
+    : Boolean(snapshot?.quiz);
+  const showLessonSidebar = hasServer &&
+    (role === "teacher" || (role === "student" && studentHasActivity));
   const invitation = useMemo(
     () => (hasValidRoom ? inviteUrl(room, window.location.href) : ""),
     [hasValidRoom, room]
@@ -313,7 +320,9 @@ export default function App() {
         </span>
       </header>
 
-      <main className={joined ? "main-content main-content--call" : isStudentInvite ? "main-content main-content--student" : "main-content"}>
+      <main className={joined
+        ? "main-content main-content--call" + (!showLessonSidebar ? " main-content--video-first" : "")
+        : isStudentInvite ? "main-content main-content--student" : "main-content"}>
         {joined && mediaUrl ? (
           <section className="call-screen" aria-label="Sala de videoaula">
             <div className="call-heading">
@@ -332,7 +341,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="lesson-workspace">
+            <div className={"lesson-workspace" + (!showLessonSidebar ? " lesson-workspace--video-only" : "")}>
               <div className="lesson-video">
                 <div className="call-frame-wrap">
                   {!frameLoaded && <div className="loading-overlay" role="status">Carregando interface de vídeo…</div>}
@@ -346,7 +355,7 @@ export default function App() {
                   />
                 </div>
               </div>
-              {hasServer && (role === "teacher" || role === "student") && (
+              {showLessonSidebar && (role === "teacher" || role === "student") && (
                 <div className="lesson-sidebar">
                   {role === "teacher" && (
                     <div className="lesson-activity-tabs" role="group" aria-label="Escolher tipo de atividade">
