@@ -403,3 +403,82 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
     min-height: 290px;
   }
 }
+
+/* Sala em andamento: priorizar o vídeo e economizar altura acima da chamada. */
+.topbar.topbar--in-call {
+  max-width: 1660px;
+  padding: 11px 30px 7px;
+}
+.topbar--in-call .logo {
+  font-size: 23px;
+}
+.topbar--in-call .logo-mark {
+  width: 34px;
+  height: 34px;
+  font-size: 23px;
+}
+.topbar--in-call .prototype-label {
+  padding: 7px 11px;
+  font-size: 11px;
+}
+.main-content.main-content--call {
+  margin: 0 auto;
+  padding-top: 5px;
+}
+.main-content--call .call-heading {
+  margin-bottom: 7px;
+  gap: 12px;
+  flex-direction: row;
+  align-items: center;
+}
+.main-content--call .call-heading .eyebrow,
+.main-content--call .call-heading p {
+  display: none;
+}
+.main-content--call .call-heading h1 {
+  font-size: clamp(17px, 2vw, 23px);
+  line-height: 1.3;
+  letter-spacing: -0.45px;
+}
+.main-content--call .call-heading .button {
+  min-height: 36px;
+  padding: 7px 12px;
+}
+.main-content--call .room-status {
+  padding: 7px 12px;
+  margin-bottom: 9px;
+  gap: 6px 16px;
+  font-size: 11px;
+}
+@media (max-width: 560px) {
+  .topbar.topbar--in-call {
+    padding: 8px 15px 5px;
+  }
+  .topbar--in-call .logo { font-size: 21px; }
+  .topbar--in-call .prototype-label {
+    max-width: 135px;
+    font-size: 9px;
+    padding: 6px 8px;
+  }
+  .main-content.main-content--call {
+    padding-top: 4px;
+  }
+  .main-content--call .call-heading {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .main-content--call .call-heading h1 {
+    font-size: 16px;
+  }
+  .main-content--call .call-heading .button {
+    flex: none;
+    font-size: 11px;
+    min-height: 34px;
+    padding: 6px 8px;
+  }
+  .main-content--call .room-status {
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+}
