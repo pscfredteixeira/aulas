@@ -482,3 +482,68 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
     font-size: 10px;
   }
 }
+
+
+/* Alternar entre vídeo, atividade equilibrada e atividade ampliada.
+   Apenas a grade CSS muda: o iframe do VDO.Ninja não é recriado. */
+.call-heading-actions { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; justify-content: flex-end; }
+.lesson-workspace.lesson-workspace--student {
+  grid-template-columns: minmax(0, 1.25fr) minmax(355px, 1fr);
+  gap: 15px;
+}
+.main-content--call.main-content--activity-expanded { max-width: 1660px; }
+.lesson-workspace.lesson-workspace--student.lesson-workspace--activity-expanded {
+  grid-template-columns: minmax(0, .8fr) minmax(400px, 1.2fr);
+}
+.student-panel-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap; padding: 8px 11px;
+  background: #f1eaf9; border-radius: 13px;
+}
+.student-panel-controls .button {
+  min-height: 37px; font-size: 12px; flex: 1 1 auto;
+}
+.teacher-presentation-controls {
+  background: #f9f5fc; border: 1px solid #e6d9f0; border-radius: 12px;
+  padding: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+}
+.teacher-presentation-status { flex: 1 1 100%; color: #705981; font-weight: 750; font-size: 11px; }
+.teacher-presentation-controls .button { flex: 1 1 auto; font-size: 12px; min-height: 38px; }
+.teacher-presentation-controls .feedback { width: 100%; }
+.lesson-workspace--student .quiz-panel {
+  padding: 23px 22px;
+}
+.lesson-workspace--student .quiz-panel-title h2 { font-size: 21px; }
+.lesson-workspace--student .quiz-question h3,
+.lesson-workspace--student .activity-prompt { font-size: 20px; }
+.lesson-workspace--student .quiz-option { min-height: 48px; font-size: 14px; }
+.lesson-workspace--student .activity-panel { padding-top: 23px; }
+@media (max-width: 1040px) and (min-width: 781px) {
+  .lesson-workspace.lesson-workspace--student {
+    grid-template-columns: minmax(0, 1fr) minmax(315px, 1fr);
+  }
+  .lesson-workspace.lesson-workspace--student.lesson-workspace--activity-expanded {
+    grid-template-columns: minmax(0, .8fr) minmax(330px, 1.2fr);
+  }
+  .lesson-workspace--student .quiz-panel { padding: 16px; }
+}
+@media (max-width: 780px) {
+  .lesson-workspace.lesson-workspace--student,
+  .lesson-workspace.lesson-workspace--student.lesson-workspace--activity-expanded {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lesson-workspace--activity-expanded .lesson-sidebar { order: 1; }
+  .lesson-workspace--activity-expanded .lesson-video { order: 2; }
+  .lesson-workspace--student .quiz-panel { max-height: none; padding: 19px; }
+  .lesson-workspace--student .activity-panel { max-height: none; }
+}
+@media (max-width: 560px) {
+  .call-heading-actions { gap: 6px; }
+  .call-heading-actions .button { white-space: normal; text-align: center; }
+  .student-panel-controls { padding: 7px; }
+  .student-panel-controls .button { font-size: 11px; }
+  .lesson-workspace--student .quiz-panel { padding: 16px 13px; }
+  .lesson-workspace--student .quiz-question h3,
+  .lesson-workspace--student .activity-prompt { font-size: 18px; }
+  .lesson-workspace--student .quiz-option { font-size: 13px; }
+}
