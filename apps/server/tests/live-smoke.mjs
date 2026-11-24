@@ -123,8 +123,22 @@ try {
   ensure(caseState.type === "case" && caseState.context.includes("trajetória profissional"),
     "Estudo de caso não chegou à turma.");
   await request(root + "/activity-close", "POST", {}, teacherSecret);
+
+  // Controle da visualização compartilhada (sem terminar a sala VDO.Ninja).
+  await request(root + "/presentation-hide", "POST", {}, alice.participantToken, 403);
+  const hiddenPresentation = await request(root + "/presentation-hide", "POST", {}, teacherSecret);
+  ensure(hiddenPresentation.room.focus === "none", "Professor não conseguiu recolher a atividade.");
+  const hiddenFromStudent = (await request(root + "/state", "GET", undefined, alice.participantToken)).room;
+  ensure(hiddenFromStudent.focus === "none" && hiddenFromStudent.status === "open",
+    "Recolher atividade encerrou a sala ou não sincronizou com aluno.");
+  await request(root + "/presentation-show", "POST", { focus: "activity" }, bruno.participantToken, 403);
+  await request(root + "/presentation-show", "POST", { focus: "none" }, teacherSecret, 422);
+  const restored = await request(root + "/presentation-show", "POST", { focus: "activity" }, teacherSecret);
+  ensure(restored.room.focus === "activity" && restored.room.activity.phase === "closed",
+    "A atividade não reapareceu ou a votação foi indevidamente reaberta.");
+
   await request(root + "/close", "POST", {}, teacherSecret);
-  console.log("OK: Firestore ativo; Sprint 5 e Sprint 6 validados na API pública: quiz, enquete, moderação e estudo de caso.");
+  console.log("OK: Firestore ativo; quiz, enquete, moderação, caso e exibição recolhível validados na API pública.");
 } catch (error) {
   console.error("FALHA no teste público de atividades:", error instanceof Error ? error.message : "erro desconhecido");
   process.exitCode = 1;
