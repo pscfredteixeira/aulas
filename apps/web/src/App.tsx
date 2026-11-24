@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
   API_BASE_URL, ApiRequestError, authorizeTeacher, closeProtectedRoom, createProtectedRoom,
-  fetchRoomState, joinProtectedRoom, leaveProtectedRoom, rotateTeacherSecret
+  fetchRoomState, hidePresentation, joinProtectedRoom, leaveProtectedRoom, rotateTeacherSecret, showPresentation
 } from "./api";
 import type { RoomSnapshot } from "./api";
 import QuizPanel from "./QuizPanel";
@@ -40,6 +40,9 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<RoomSnapshot | null>(null);
   const [joined, setJoined] = useState(false);
   const [panelTab, setPanelTab] = useState<"quiz" | "activity">("quiz");
+  const [studentPanelHidden, setStudentPanelHidden] = useState(false);
+  const [studentActivityExpanded, setStudentActivityExpanded] = useState(false);
+  const [presentationError, setPresentationError] = useState("");
   const [videoOnlyAvailable, setVideoOnlyAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [frameLoaded, setFrameLoaded] = useState(false);
@@ -55,13 +58,20 @@ export default function App() {
   const hasValidRoom = isRoomId(room);
   const isStudentInvite = Boolean(initialRoom && room === initialRoom && !teacherSecret);
   const hasServer = Boolean(API_BASE_URL);
-  // O professor precisa do painel para preparar questões. Para alunos, ele só
-  // ocupa espaço quando há uma atividade publicada (inclusive resultados).
-  const studentHasActivity = snapshot?.focus === "activity"
-    ? Boolean(snapshot.activity)
-    : Boolean(snapshot?.quiz);
+  // Somente o conteúdo que o professor apresentou ocupa a tela do aluno.
+  // O professor conserva as duas abas para preparar o conteúdo seguinte.
+  const presentedType = snapshot?.focus === "quiz" || snapshot?.focus === "activity"
+    ? snapshot.focus : null;
+  const presentedContent = presentedType === "quiz"
+    ? snapshot?.quiz
+    : presentedType === "activity" ? snapshot?.activity : null;
+  const presentationKey = presentedType && presentedContent
+    ? `${presentedType}:${presentedContent.id}` : null;
+  const studentHasActivity = Boolean(presentationKey);
   const showLessonSidebar = hasServer &&
-    (role === "teacher" || (role === "student" && studentHasActivity));
+    (role === "teacher" || (role === "student" && studentHasActivity && !studentPanelHidden));
+  const canShowQuiz = Boolean(snapshot?.quiz && snapshot.quiz.phase !== "draft");
+  const canShowActivity = Boolean(snapshot?.activity && snapshot.activity.phase !== "draft");
   const invitation = useMemo(
     () => (hasValidRoom ? inviteUrl(room, window.location.href) : ""),
     [hasValidRoom, room]
@@ -74,6 +84,23 @@ export default function App() {
     () => (hasValidRoom && name.trim() ? vdoUrl(room, name) : ""),
     [hasValidRoom, room, name]
   );
+
+  // Uma atividade nova (ou reapresentada pelo professor) aparece automaticamente;
+  // ocultar é uma preferência local e não apaga a resposta enviada pelo aluno.
+  const lastPresentedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!joined || role !== "student") {
+      lastPresentedRef.current = null;
+      return;
+    }
+    if (presentationKey !== lastPresentedRef.current) {
+      lastPresentedRef.current = presentationKey;
+      if (presentationKey) {
+        setStudentPanelHidden(false);
+        setStudentActivityExpanded(false);
+      }
+    }
+  }, [joined, role, presentationKey]);
 
   useEffect(() => {
     if (previewRef.current) previewRef.current.srcObject = previewStream;
@@ -110,6 +137,22 @@ export default function App() {
     const timer = window.setInterval(() => { void sync(); }, 3000);
     return () => { active = false; clearInterval(timer); };
   }, [joined, hasServer, authToken, hasValidRoom, room]);
+
+  async function changePresentation(next: "none" | "quiz" | "activity") {
+    if (role !== "teacher" || !authToken || busy) return;
+    setBusy(true);
+    setPresentationError("");
+    try {
+      const result = next === "none"
+        ? await hidePresentation(room, authToken)
+        : await showPresentation(room, authToken, next);
+      setSnapshot(result.room);
+    } catch (error) {
+      setPresentationError(error instanceof Error ? error.message : "Não foi possível alterar a atividade.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   function stopPreview() {
     localStream.current?.getTracks().forEach(track => track.stop());
@@ -321,7 +364,9 @@ export default function App() {
       </header>
 
       <main className={joined
-        ? "main-content main-content--call" + (!showLessonSidebar ? " main-content--video-first" : "")
+        ? "main-content main-content--call" +
+          (!showLessonSidebar ? " main-content--video-first" : "") +
+          (role === "student" && studentActivityExpanded && showLessonSidebar ? " main-content--activity-expanded" : "")
         : isStudentInvite ? "main-content main-content--student" : "main-content"}>
         {joined && mediaUrl ? (
           <section className="call-screen" aria-label="Sala de videoaula">
@@ -331,7 +376,17 @@ export default function App() {
                 <h1>Sala <span>{room.slice(0, 12)}…</span></h1>
                 <p>Converse normalmente com todos os participantes pelo VDO.Ninja.</p>
               </div>
-              <button className="button button-outline" type="button" onClick={leaveRoom}>Sair da chamada</button>
+              <div className="call-heading-actions">
+                {role === "student" && studentHasActivity && studentPanelHidden && (
+                  <button className="button button-primary" type="button"
+                    onClick={() => setStudentPanelHidden(false)}>
+                    {presentedType === "quiz" ? "Ver quiz" :
+                      snapshot?.activity?.type === "poll" ? "Ver enquete" :
+                      snapshot?.activity?.type === "case" ? "Ver estudo de caso" : "Ver atividade"}
+                  </button>
+                )}
+                <button className="button button-outline" type="button" onClick={leaveRoom}>Sair da chamada</button>
+              </div>
             </div>
 
             {hasServer && snapshot && (
@@ -341,7 +396,10 @@ export default function App() {
               </div>
             )}
 
-            <div className={"lesson-workspace" + (!showLessonSidebar ? " lesson-workspace--video-only" : "")}>
+            <div className={"lesson-workspace" +
+              (!showLessonSidebar ? " lesson-workspace--video-only" : "") +
+              (role === "student" && showLessonSidebar ? " lesson-workspace--student" : "") +
+              (role === "student" && studentActivityExpanded && showLessonSidebar ? " lesson-workspace--activity-expanded" : "")}>
               <div className="lesson-video">
                 <div className="call-frame-wrap">
                   {!frameLoaded && <div className="loading-overlay" role="status">Carregando interface de vídeo…</div>}
@@ -357,6 +415,18 @@ export default function App() {
               </div>
               {showLessonSidebar && (role === "teacher" || role === "student") && (
                 <div className="lesson-sidebar">
+                  {role === "student" && (
+                    <div className="student-panel-controls" role="group" aria-label="Opções de visualização da atividade">
+                      <button type="button" className="button button-outline" aria-pressed={studentActivityExpanded}
+                        onClick={() => setStudentActivityExpanded(value => !value)}>
+                        {studentActivityExpanded ? "Equilibrar vídeo e atividade" : "Ampliar atividade"}
+                      </button>
+                      <button type="button" className="button button-subtle"
+                        onClick={() => { setStudentPanelHidden(true); setStudentActivityExpanded(false); }}>
+                        Ocultar atividade
+                      </button>
+                    </div>
+                  )}
                   {role === "teacher" && (
                     <div className="lesson-activity-tabs" role="group" aria-label="Escolher tipo de atividade">
                       <button type="button" className={panelTab === "quiz" ? "active" : ""}
@@ -367,6 +437,34 @@ export default function App() {
                         aria-pressed={panelTab === "activity"} onClick={() => setPanelTab("activity")}>
                         Enquetes e discussões
                       </button>
+                    </div>
+                  )}
+                  {role === "teacher" && (
+                    <div className="teacher-presentation-controls" aria-label="O que os alunos estão vendo">
+                      <span className="teacher-presentation-status">
+                        {snapshot?.focus === "none" ? "Turma: somente vídeo" :
+                          snapshot?.focus === "activity" ? "Turma: atividade visível" :
+                          canShowQuiz ? "Turma: quiz visível" : "Turma: aguardando"}
+                      </span>
+                      {snapshot?.focus !== "none" && (
+                        <button className="button button-outline" type="button" disabled={busy || !(snapshot?.focus === "activity" ? canShowActivity : canShowQuiz)}
+                          onClick={() => void changePresentation("none")}>
+                          Encerrar e retirar da turma
+                        </button>
+                      )}
+                      {snapshot?.focus === "none" && canShowQuiz && (
+                        <button className="button button-subtle" type="button" disabled={busy}
+                          onClick={() => void changePresentation("quiz")}>
+                          Mostrar quiz novamente
+                        </button>
+                      )}
+                      {snapshot?.focus === "none" && canShowActivity && (
+                        <button className="button button-subtle" type="button" disabled={busy}
+                          onClick={() => void changePresentation("activity")}>
+                          Mostrar atividade novamente
+                        </button>
+                      )}
+                      {presentationError && <p className="feedback feedback-error" role="alert">{presentationError}</p>}
                     </div>
                   )}
                   {(role === "teacher" ? panelTab : snapshot?.focus ?? "quiz") === "quiz" ? (
