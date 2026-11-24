@@ -310,7 +310,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
+      <header className={joined ? "topbar topbar--in-call" : "topbar"}>
         <a className="logo" href={window.location.pathname} aria-label="Página inicial do Aulas">
           <span className="logo-mark">a</span>
           <span>Aulas<span className="logo-dot">.</span></span>
