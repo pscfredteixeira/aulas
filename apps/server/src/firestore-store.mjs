@@ -10,7 +10,7 @@ export function serializeRoom(room) {
     status: room.status,
     quiz: room.quiz ?? null,
     activity: room.activity ?? null,
-    focus: room.focus === "activity" ? "activity" : "quiz",
+    focus: room.focus && ["quiz", "activity", "none"].includes(room.focus) ? room.focus : "quiz",
     participants: [...room.participants.values()].map(participant => ({
       id: participant.id,
       name: participant.name,
@@ -46,7 +46,7 @@ export function reviveRoom(raw) {
     status: raw.status,
     quiz: raw.quiz ?? null,
     activity: raw.activity ?? null,
-    focus: raw.focus === "activity" ? "activity" : "quiz",
+    focus: raw.focus && ["quiz", "activity", "none"].includes(raw.focus) ? raw.focus : "quiz",
     participants
   };
 }
