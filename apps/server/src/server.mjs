@@ -70,7 +70,7 @@ function publicRoom(room, now, role = "student", participantId = null) {
     teacher: room.teacherName,
     quiz: quizForRole(room.quiz, role, participantId),
     activity: activityForRole(room.activity, role, participantId),
-    focus: room.focus === "activity" ? "activity" : "quiz",
+    focus: ["activity", "quiz", "none"].includes(room.focus) ? room.focus : "quiz",
     participants: [...room.participants.values()]
       .filter(p => now - p.lastSeen < ACTIVE_MS)
       .map(p => ({ id: p.id, name: p.name }))
@@ -155,7 +155,7 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
         return;
       }
     }
-    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close|quiz-answer|quiz-reveal|activity|activity-open|activity-close|activity-answer|activity-moderate|activity-reveal))?$/);
+    const matched = url.pathname.match(/^\/api\/rooms\/(aulas-[0-9a-f]{24})(?:\/(join|teacher|state|leave|close|rotate|quiz|quiz-open|quiz-close|quiz-answer|quiz-reveal|activity|activity-open|activity-close|activity-answer|activity-moderate|activity-reveal|presentation-hide|presentation-show))?$/);
     if (!matched) { send(res, 404, { error: "Endereço não encontrado." }); return; }
     const [, roomId, op] = matched;
     let room = rooms.get(roomId);
@@ -207,6 +207,52 @@ export function createAulasServer({ allowedOrigins = ["http://localhost:5173"], 
     if (req.method === "GET" && op === "state") {
       if (access.participant) access.participant.lastSeen = now();
       send(res, 200, { role: access.role, room: publicRoom(room, now(), access.role, access.participant?.id) }); return;
+    }
+    // The teacher can clear the shared activity surface without ending the call.
+    // Hiding an ongoing vote also closes it; reopening the visual panel does not
+    // restart voting or disclose a private answer key.
+    if (req.method === "POST" && (op === "presentation-hide" || op === "presentation-show")) {
+      if (access.role !== "teacher") {
+        send(res, 403, { error: "Somente o professor pode controlar a exibição para a turma." }); return;
+      }
+      if (room.status !== "open") {
+        send(res, 409, { error: "A sala foi encerrada." }); return;
+      }
+      if (op === "presentation-hide") {
+        if (room.focus === "quiz" && room.quiz?.phase === "open") {
+          room.quiz.phase = "closed";
+          room.quiz.version++;
+        }
+        if (room.focus === "activity" && room.activity?.phase === "open") {
+          room.activity.phase = "closed";
+          room.activity.version++;
+        }
+        room.focus = "none";
+        await persist(room);
+        send(res, 200, { room: publicRoom(room, now(), "teacher") }); return;
+      }
+      let input;
+      try { input = await readJSON(req); }
+      catch (error) {
+        if (!res.writableEnded && !res.destroyed) {
+          send(res, error.statusCode || 400, { error: error.message || "Pedido inválido." });
+        }
+        return;
+      }
+      if (!["quiz", "activity"].includes(input.focus)) {
+        send(res, 422, { error: "Escolha quiz ou atividade." }); return;
+      }
+      const chosen = input.focus === "quiz" ? room.quiz : room.activity;
+      const other = input.focus === "quiz" ? room.activity : room.quiz;
+      if (!chosen || chosen.phase === "draft") {
+        send(res, 409, { error: "Não há conteúdo publicado para mostrar." }); return;
+      }
+      if (other?.phase === "open") {
+        send(res, 409, { error: "Encerre a outra atividade antes de mostrá-la à turma." }); return;
+      }
+      room.focus = input.focus;
+      await persist(room);
+      send(res, 200, { room: publicRoom(room, now(), "teacher") }); return;
     }
     if (req.method === "POST" &&
         ["activity", "activity-open", "activity-close", "activity-reveal", "activity-moderate", "activity-answer"].includes(op)) {
