@@ -374,3 +374,32 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
   .lesson-activity-tabs button { font-size: 11px; }
   .lesson-sidebar { gap: 8px; }
 }
+
+/* Aula em foco: vídeo grande até o professor publicar uma atividade.
+   O iframe VDO.Ninja permanece montado durante a mudança de layout. */
+.main-content--call.main-content--video-first {
+  max-width: 1660px;
+}
+.lesson-workspace.lesson-workspace--video-only {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.lesson-workspace--video-only .lesson-video {
+  width: 100%;
+}
+.lesson-workspace--video-only .lesson-video .call-frame-wrap {
+  height: min(83vh, 920px);
+  min-height: 510px;
+}
+@media (max-width: 780px) {
+  .lesson-workspace--video-only .lesson-video .call-frame-wrap {
+    height: 72vh;
+    min-height: 340px;
+  }
+}
+@media (max-width: 560px) {
+  .lesson-workspace--video-only .lesson-video .call-frame-wrap {
+    height: 70vh;
+    min-height: 290px;
+  }
+}
