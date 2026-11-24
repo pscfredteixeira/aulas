@@ -178,3 +178,79 @@ test("Sprint 6: não abrir quiz e atividade simultaneamente; manter atividade e 
     await new Promise(resolve => second.server.close(resolve));
   }
 });
+
+test("Apresentação: professor recolhe e reabre quiz para a turma sem encerrar chamada", async t => {
+  const { server, base } = await start();
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const created = await request(base, "POST", "/api/rooms", { name: "Docente" });
+  const root = `/api/rooms/${created.data.roomId}`;
+  const teacher = created.data.teacherSecret;
+  const student = (await request(base, "POST", root + "/join", { name: "Estudante" })).data.participantToken;
+  const draft = await request(base, "POST", root + "/quiz", {
+    prompt: "Qual conceito aparece nos estudos do sonho?",
+    options: ["Condensação", "Ambivalência", "Identificação", "Relação"],
+    correctOptionId: "A"
+  }, teacher);
+  assert.equal(draft.status, 201);
+  assert.equal((await request(base, "POST", root + "/presentation-show", { focus: "quiz" }, teacher)).status, 409,
+    "rascunho não pode ser mostrado aos alunos");
+  await request(base, "POST", root + "/quiz-open", {}, teacher);
+  assert.equal((await request(base, "POST", root + "/presentation-hide", {}, student)).status, 403);
+  assert.equal((await request(base, "POST", root + "/presentation-show", { focus: "quiz" }, student)).status, 403);
+  const hidden = await request(base, "POST", root + "/presentation-hide", {}, teacher);
+  assert.equal(hidden.status, 200);
+  assert.equal(hidden.data.room.focus, "none");
+  assert.equal(hidden.data.room.quiz.phase, "closed", "retirar também encerra a votação");
+  const studentState = await request(base, "GET", root + "/state", undefined, student);
+  assert.equal(studentState.data.room.status, "open", "a chamada e a sala continuam abertas");
+  assert.equal(studentState.data.room.focus, "none");
+  assert.equal((await request(base, "POST", root + "/quiz-answer", {
+    quizId: draft.data.quiz.id, optionId: "A"
+  }, student)).status, 409, "resposta após recolher é rejeitada");
+
+  const restored = await request(base, "POST", root + "/presentation-show", { focus: "quiz" }, teacher);
+  assert.equal(restored.status, 200);
+  assert.equal(restored.data.room.focus, "quiz");
+  assert.equal(restored.data.room.quiz.phase, "closed", "mostrar não reabre votação");
+  assert.equal((await request(base, "POST", root + "/presentation-show", { focus: "none" }, teacher)).status, 422);
+  assert.equal((await request(base, "POST", root + "/presentation-show", { focus: "activity" }, teacher)).status, 409);
+});
+
+test("Apresentação: recolhimento e retorno de estudo de caso persistem após reinício", async () => {
+  const documents = new Map();
+  const store = {
+    async get(id) {
+      const raw = documents.get(id);
+      return raw ? reviveRoom(structuredClone(raw)) : null;
+    },
+    async save(room) { documents.set(room.id, structuredClone(serializeRoom(room))); },
+    async delete(id) { documents.delete(id); },
+    async cleanupExpired() {}
+  };
+  const first = await start(store);
+  const created = await request(first.base, "POST", "/api/rooms", { name: "Docente" });
+  const root = `/api/rooms/${created.data.roomId}`;
+  const teacher = created.data.teacherSecret;
+  const student = (await request(first.base, "POST", root + "/join", { name: "Estudante" })).data.participantToken;
+  await request(first.base, "POST", root + "/activity", caseData, teacher);
+  await request(first.base, "POST", root + "/activity-open", {}, teacher);
+  const hidden = await request(first.base, "POST", root + "/presentation-hide", {}, teacher);
+  assert.equal(hidden.data.room.focus, "none");
+  assert.equal(hidden.data.room.activity.phase, "closed");
+  await new Promise(resolve => first.server.close(resolve));
+
+  const second = await start(store);
+  try {
+    const read = await request(second.base, "GET", root + "/state", undefined, student);
+    assert.equal(read.status, 200);
+    assert.equal(read.data.room.focus, "none");
+    assert.equal(read.data.room.activity.phase, "closed");
+    const shown = await request(second.base, "POST", root + "/presentation-show", { focus: "activity" }, teacher);
+    assert.equal(shown.status, 200);
+    assert.equal(shown.data.room.focus, "activity");
+    const after = await request(second.base, "GET", root + "/state", undefined, student);
+    assert.equal(after.data.room.activity.type, "case");
+  } finally {
+    await new Promise(resolve => second.server.close(resolve));
+  }
+});
